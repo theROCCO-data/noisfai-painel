@@ -1,5 +1,6 @@
 import { listCapacidadeDias } from "@/lib/data/capacidade";
 import { VagasInput } from "@/components/capacidade/vagas-input";
+import { CapacidadeTotalInput } from "@/components/capacidade/capacidade-total-input";
 import { PeriodoDropdown } from "@/components/capacidade/periodo-dropdown";
 import { TabelaRedimensionavel, Coluna } from "@/components/ui/tabela-redimensionavel";
 
@@ -66,8 +67,8 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
                 <div className="flex flex-col gap-1.5 text-[12.5px]">
                   <div className="flex items-center justify-between text-[var(--color-text-muted)]">
                     <span>Vagas consumidas</span>
-                    <span className="text-[var(--color-text-secondary)]">
-                      {d.reservado} de {d.capacidadeBot}
+                    <span className="flex items-center gap-1 text-[var(--color-text-secondary)]">
+                      {d.reservado} de <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} />
                     </span>
                   </div>
                   <div className="h-[5px] w-full overflow-hidden rounded-full bg-white/10">
@@ -123,8 +124,8 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
                     <Coluna id="dia" defaultWidth={90} className="text-[var(--color-text-secondary)]">
                       {diaSemana}
                     </Coluna>
-                    <Coluna id="capacidade" defaultWidth={120} className="text-[var(--color-text-secondary)]">
-                      {d.capacidadeBot}
+                    <Coluna id="capacidade" defaultWidth={120}>
+                      <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} />
                     </Coluna>
                     <Coluna id="consumidas" defaultWidth={320} className="flex items-center gap-3">
                       <span className="w-6 shrink-0 text-[var(--color-text-secondary)]">{d.reservado}</span>
