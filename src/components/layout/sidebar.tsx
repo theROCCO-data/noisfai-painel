@@ -75,6 +75,7 @@ export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = nu
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={
                 active
                   ? "flex h-[34px] w-full items-center gap-[10px] rounded-[14px] border border-[rgba(168,85,247,0.32)] bg-gradient-to-r from-[rgba(168,85,247,0.24)] to-[rgba(124,58,237,0.08)] px-[10px] shadow-[0px_10px_26px_-16px_rgba(168,85,247,0.5)]"
@@ -110,6 +111,7 @@ export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = nu
       <div className="flex w-full items-center gap-[9px] overflow-clip border-t border-[var(--color-border)] px-[8px] pt-[10px]">
         <Link
           href="/configuracoes"
+          prefetch={false}
           className={
             pathname === "/configuracoes"
               ? "flex flex-1 items-center gap-[9px] overflow-clip rounded-[12px] bg-white/[0.05] p-1"

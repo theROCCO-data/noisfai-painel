@@ -29,6 +29,7 @@ export function ConversaListItem({
   return (
     <Link
       href={`/conversas/${conversationId}`}
+      prefetch={false}
       className={
         ativo
           ? "flex w-full items-start gap-[10px] rounded-[18px] border border-[rgba(168,85,247,0.3)] px-[18px] py-3"

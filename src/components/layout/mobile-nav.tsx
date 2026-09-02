@@ -28,6 +28,7 @@ export function MobileNav({ conversasAbertas = 0 }: { conversasAbertas?: number 
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             className={
               active
                 ? "relative flex flex-1 flex-col items-center gap-0.5 rounded-[14px] bg-gradient-to-b from-[rgba(168,85,247,0.24)] to-[rgba(124,58,237,0.08)] py-1.5 text-[#e9d5ff]"

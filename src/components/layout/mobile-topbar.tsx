@@ -39,6 +39,7 @@ export function MobileTopBar({
 
       <Link
         href="/configuracoes"
+        prefetch={false}
         className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[rgba(168,85,247,0.32)] bg-[#1d1436]"
       >
         {avatarUrl ? (

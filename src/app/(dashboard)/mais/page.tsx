@@ -34,6 +34,7 @@ export default async function MaisPage() {
       {user && (
         <Link
           href="/configuracoes"
+          prefetch={false}
           className="flex items-center gap-3 rounded-[20px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)] p-4"
         >
           <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[rgba(168,85,247,0.32)] bg-[#1d1436]">
@@ -54,6 +55,7 @@ export default async function MaisPage() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={`flex items-center gap-3 px-4 py-3.5 ${i > 0 ? "border-t border-white/5" : ""}`}
             >
               <Icon size={18} className="text-[var(--color-text-muted)]" />
