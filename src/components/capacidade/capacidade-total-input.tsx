@@ -17,6 +17,7 @@ export function CapacidadeTotalInput({
 }) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(valorInicial);
+  const [texto, setTexto] = useState(String(valorInicial));
   const [confirmando, setConfirmando] = useState(false);
   const [pending, startTransition] = useTransition();
   const valorAnterior = useRef(valorInicial);
@@ -24,14 +25,21 @@ export function CapacidadeTotalInput({
   const outrosDias = todosIds.length - 1;
   const dataFormatada = new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
 
+  function abrirEdicao() {
+    setTexto(String(valor));
+    setEditando(true);
+  }
+
   function commit() {
     setEditando(false);
-    if (valor === valorAnterior.current) return;
+    const novoValor = texto === "" ? 0 : Number(texto);
+    setValor(novoValor);
+    if (novoValor === valorAnterior.current) return;
     if (outrosDias > 0) {
       setConfirmando(true);
       return;
     }
-    salvar(false);
+    salvar(false, novoValor);
   }
 
   function cancelarConfirmacao() {
@@ -39,17 +47,17 @@ export function CapacidadeTotalInput({
     setValor(valorAnterior.current);
   }
 
-  function salvar(emLote: boolean) {
+  function salvar(emLote: boolean, novoValor: number = valor) {
     setConfirmando(false);
     startTransition(async () => {
       const result = emLote
-        ? await atualizarCapacidadeTotalEmLote(todosIds, valor)
-        : await atualizarCapacidadeTotal(id, valor);
+        ? await atualizarCapacidadeTotalEmLote(todosIds, novoValor)
+        : await atualizarCapacidadeTotal(id, novoValor);
       if (!result.ok) {
         alert(`Não deu pra salvar: ${result.error}`);
         setValor(valorAnterior.current);
       } else {
-        valorAnterior.current = valor;
+        valorAnterior.current = novoValor;
       }
     });
   }
@@ -61,9 +69,9 @@ export function CapacidadeTotalInput({
           type="number"
           min={0}
           autoFocus
-          value={valor}
+          value={texto}
           disabled={pending}
-          onChange={(e) => setValor(Number(e.target.value))}
+          onChange={(e) => setTexto(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === "Enter" && commit()}
           className="h-[28px] w-[70px] rounded-[999px] border border-[rgba(168,85,247,0.3)] bg-transparent text-center text-[13px] font-medium text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(168,85,247,0.5)] disabled:opacity-50"
@@ -71,7 +79,7 @@ export function CapacidadeTotalInput({
       ) : (
         <button
           type="button"
-          onClick={() => setEditando(true)}
+          onClick={abrirEdicao}
           title="Alterar capacidade total do dia"
           disabled={pending}
           className="flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50"
