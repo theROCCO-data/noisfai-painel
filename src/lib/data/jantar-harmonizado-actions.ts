@@ -96,6 +96,44 @@ export async function atualizarEdicaoJH(formData: FormData): Promise<ActionResul
   return { ok: true };
 }
 
+export type ReservaEdicaoJH = {
+  id: number;
+  nome: string;
+  pessoas: number;
+  canal: string;
+  statusPagamento: string;
+  comprovanteUrl: string | null;
+  status: string;
+};
+
+/**
+ * Reservas não têm FK pra eventos_especiais_historico (o schema atual não
+ * amarra reserva a uma edição específica) — usa a data do evento como
+ * correlação, já que o Jantar Harmonizado é sempre uma data única por edição.
+ */
+export async function listReservasEdicaoJH(dataEvento: string): Promise<ReservaEdicaoJH[]> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("reservas")
+    .select("id, nome, pessoas, canal, status_pagamento, comprovante_url, status")
+    .ilike("objetivo", "%harmonizado%")
+    .eq("data", dataEvento)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`listReservasEdicaoJH: ${error.message}`);
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    nome: r.nome,
+    pessoas: r.pessoas,
+    canal: r.canal ?? "online",
+    statusPagamento: r.status_pagamento ?? "pendente",
+    comprovanteUrl: r.comprovante_url,
+    status: r.status,
+  }));
+}
+
 export async function confirmarPagamentoJH(reservaId: number): Promise<ActionResult> {
   const supabase = createAdminClient();
 

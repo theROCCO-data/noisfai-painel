@@ -3,6 +3,7 @@ import { getEdicaoJH, getPreReservasJH, listHistoricoJH } from "@/lib/data/janta
 import { SectionCard } from "@/components/ui/section-card";
 import { EditarEdicaoDialog } from "@/components/jantar-harmonizado/editar-edicao-dialog";
 import { ListaPreReservas } from "@/components/jantar-harmonizado/lista-pre-reservas";
+import { HistoricoEdicaoDialog } from "@/components/jantar-harmonizado/historico-edicao-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -77,16 +78,26 @@ export default async function JantarHarmonizadoPage() {
         </div>
       )}
 
-      <SectionCard icon={Wine} title="Pré-reservas" className="w-full">
+      <SectionCard icon={Wine} title="Reservas" className="w-full">
+        <div className="flex items-center gap-2 px-[18px] pt-2">
+          <span className="text-[11px] font-semibold tracking-[0.5px] text-[var(--color-text-muted)] uppercase">Pendentes</span>
+          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[999px] bg-white/[0.06] px-[6px] text-[10.5px] font-semibold text-[var(--color-text-secondary)]">
+            {pendentes.length}
+          </span>
+        </div>
         <ListaPreReservas
           tableId="jantar-harmonizado-prereservas"
           itens={pendentes}
           vazio="Nenhuma pré-reserva registrada ainda."
           mostrarConfirmar
         />
-      </SectionCard>
 
-      <SectionCard icon={Wine} title="Reservas confirmadas" className="w-full">
+        <div className="mt-2 flex items-center gap-2 border-t border-white/5 px-[18px] pt-4">
+          <span className="text-[11px] font-semibold tracking-[0.5px] text-[var(--color-text-muted)] uppercase">Confirmadas</span>
+          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[999px] bg-white/[0.06] px-[6px] text-[10.5px] font-semibold text-[var(--color-text-secondary)]">
+            {confirmadas.length}
+          </span>
+        </div>
         <ListaPreReservas
           tableId="jantar-harmonizado-confirmadas"
           itens={confirmadas}
@@ -104,20 +115,19 @@ export default async function JantarHarmonizadoPage() {
         ) : (
           <div className="flex w-full flex-col gap-2 p-[14px]">
             {historico.map((h) => (
-              <div
-                key={h.id}
-                className="flex w-full flex-wrap items-center justify-between gap-3 rounded-[14px] border border-white/5 bg-white/[0.02] px-4 py-3 text-[13px]"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <p className="font-medium text-[var(--color-text-primary)]">{h.titulo || "Sem nome"}</p>
-                  <p className="text-[11.5px] text-[var(--color-text-muted)]">Arquivada em {formatDataHora(h.arquivadoEm)}</p>
+              <HistoricoEdicaoDialog key={h.id} edicao={h}>
+                <div className="flex w-full flex-wrap items-center justify-between gap-3 rounded-[14px] border border-white/5 bg-white/[0.02] px-4 py-3 text-[13px] hover:border-[rgba(168,85,247,0.3)] hover:bg-white/[0.04]">
+                  <div className="flex flex-col gap-0.5">
+                    <p className="font-medium text-[var(--color-text-primary)]">{h.titulo || "Sem nome"}</p>
+                    <p className="text-[11.5px] text-[var(--color-text-muted)]">Arquivada em {formatDataHora(h.arquivadoEm)}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12.5px] text-[var(--color-text-secondary)]">
+                    <span>Data: {formatData(h.dataEvento)}</span>
+                    <span>Valor: {formatBRL(h.valorPessoa)}</span>
+                    {h.cotaVagas !== null && <span>Cota: {h.cotaVagas} vagas</span>}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12.5px] text-[var(--color-text-secondary)]">
-                  <span>Data: {formatData(h.dataEvento)}</span>
-                  <span>Valor: {formatBRL(h.valorPessoa)}</span>
-                  {h.cotaVagas !== null && <span>Cota: {h.cotaVagas} vagas</span>}
-                </div>
-              </div>
+              </HistoricoEdicaoDialog>
             ))}
           </div>
         )}
