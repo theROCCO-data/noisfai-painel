@@ -20,6 +20,7 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
   const dias = await listCapacidadeDias(de, ate);
 
   const rotuloPeriodo = de && ate ? `${formatCurto(de)} – ${formatCurto(ate)}` : "Todos os dias cadastrados";
+  const todosIds = dias.map((d) => d.id);
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -68,7 +69,7 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
                   <div className="flex items-center justify-between text-[var(--color-text-muted)]">
                     <span>Vagas consumidas</span>
                     <span className="flex items-center gap-1 text-[var(--color-text-secondary)]">
-                      {d.reservado} de <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} />
+                      {d.reservado} de <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} data={d.data} todosIds={todosIds} />
                     </span>
                   </div>
                   <div className="h-[5px] w-full overflow-hidden rounded-full bg-white/10">
@@ -125,7 +126,7 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
                       {diaSemana}
                     </Coluna>
                     <Coluna id="capacidade" defaultWidth={120}>
-                      <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} />
+                      <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} data={d.data} todosIds={todosIds} />
                     </Coluna>
                     <Coluna id="consumidas" defaultWidth={320} className="flex items-center gap-3">
                       <span className="w-6 shrink-0 text-[var(--color-text-secondary)]">{d.reservado}</span>
