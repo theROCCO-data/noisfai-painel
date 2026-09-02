@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Painel NOI
 
-## Getting Started
+Painel administrativo do NOI São Francisco: reservas, conversas do WhatsApp
+(atendidas pelo chatbot Nyx), clientes, capacidade, cardápio, iFood, Jantar
+Harmonizado, análises e configurações de usuários. Next.js 16 (App Router) +
+Supabase.
 
-First, run the development server:
+## Rodando localmente
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre em [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variáveis de ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crie um `.env.local` na raiz com:
 
-## Learn More
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-To learn more about Next.js, take a look at the following resources:
+# servidor apenas — nunca prefixar com NEXT_PUBLIC_, nunca importar em Client Components
+SUPABASE_SERVICE_ROLE_KEY=
+OPENAI_API_KEY=
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# workflows-ponte no n8n (leem/escrevem o Redis de handoff bot/humano —
+# mesma chave que o bot do WhatsApp usa)
+N8N_STATUS_HUMANO_URL=
+N8N_STATUS_HUMANO_TOKEN=
+N8N_INICIAR_HUMANO_URL=
+N8N_FINALIZAR_HUMANO_URL=
+N8N_ENVIAR_MENSAGEM_URL=
+N8N_PERFIL_WHATSAPP_URL=
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+No Vercel, essas mesmas chaves precisam ser configuradas em
+**Project Settings → Environment Variables**.
 
-## Deploy on Vercel
+## Migrações de banco
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+As migrações SQL ficam em `migrations/`. Pra rodar uma:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+MIGRATION_DB_PASSWORD="senha do banco Postgres do Supabase" node run-migration.mjs
+```
+
+(o script lê a senha só da variável de ambiente — nunca fica salva em
+arquivo). `check-status-col.mjs` é um utilitário parecido pra inspecionar
+colunas/constraints direto no Postgres.
+
+## Recriando os workflows-ponte do n8n
+
+Os workflows que ligam o painel ao n8n (consulta de status humano/bot,
+iniciar/devolver atendimento, envio de mensagem) foram criados uma vez via
+API do n8n, usando os scripts `create-n8n-workflow.mjs`,
+`create-n8n-controle-humano.mjs` e `create-n8n-workflow-envio.mjs`. Eles já
+rodaram e os workflows já existem no n8n — só precisa rodar de novo se for
+recriar o ambiente do zero (outra instância do n8n, por exemplo):
+
+```bash
+N8N_API_KEY="chave de API do n8n" N8N_STATUS_HUMANO_TOKEN="token combinado com o painel" node create-n8n-workflow.mjs
+N8N_API_KEY="..." N8N_STATUS_HUMANO_TOKEN="..." node create-n8n-controle-humano.mjs
+N8N_API_KEY="..." N8N_STATUS_HUMANO_TOKEN="..." node create-n8n-workflow-envio.mjs
+```
+
+Depois de criados, os workflows precisam ser **publicados** (Publish/Active)
+no n8n pra responder no domínio público.
+
+## Deploy
+
+Publicado no [Vercel](https://vercel.com). Deploy automático a cada push na
+branch principal.

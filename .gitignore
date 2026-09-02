@@ -40,10 +40,3 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# scripts avulsos de setup/migração — alguns têm chave de API do n8n
-# hardcoded, nunca comitar. Ficam só localmente.
-check-status-col.mjs
-run-migration.mjs
-create-n8n-controle-humano.mjs
-create-n8n-workflow-envio.mjs
-create-n8n-workflow.mjs
