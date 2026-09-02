@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Pencil, X } from "lucide-react";
 import { atualizarCapacidadeTotal, atualizarCapacidadeTotalEmLote } from "@/lib/data/capacidade-actions";
 
@@ -24,6 +24,17 @@ export function CapacidadeTotalInput({
 
   const outrosDias = todosIds.length - 1;
   const dataFormatada = new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
+
+  // ressincroniza com o valor vindo do servidor (ex: uma edição em lote
+  // disparada por outro dia da lista mexeu nesse aqui também) — só quando
+  // não está em edição/confirmação, pra não atropelar o usuário no meio de uma ação
+  useEffect(() => {
+    if (!editando && !confirmando) {
+      setValor(valorInicial);
+      valorAnterior.current = valorInicial;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valorInicial]);
 
   function abrirEdicao() {
     setTexto(String(valor));
