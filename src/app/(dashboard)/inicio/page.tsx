@@ -4,6 +4,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Relogio } from "@/components/ui/relogio";
+import { AutoRefresh } from "@/components/conversas/auto-refresh";
 import {
   getReservasHoje,
   getVagasHoje,
@@ -47,6 +48,7 @@ export default async function InicioPage() {
 
   return (
     <div className="flex w-full flex-col gap-[22px]">
+      <AutoRefresh intervalMs={8000} />
       <header className="flex flex-col gap-1">
         <h1 className="font-display text-[28px] font-semibold text-[var(--color-text-primary)]">Início</h1>
         <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--color-text-muted)]">
