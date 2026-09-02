@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-outfit);
+
+  --color-bg: #08050f;
+  --color-card-from: #120c20;
+  --color-card-to: #0c0817;
+  --color-border: #2a2540;
+  --color-border-soft: rgba(255, 255, 255, 0.07);
+
+  --color-text-primary: #ece8f7;
+  --color-text-secondary: #b9b2d0;
+  --color-text-muted: #87809f;
+
+  --color-accent: #a855f7;
+  --color-accent-dark: #7c3aed;
+  --color-accent-darker: #6d28d9;
+
+  --color-status-green: #4ade80;
+  --color-status-amber: #fbbf24;
+  --color-status-red: #f87171;
+  --color-status-sky: #7dd3fc;
+}
+
+:root {
+  /* faz o navegador renderizar os controles nativos (date/time picker, spinner
+     de número, popup de <select>) na variante escura em vez do branco padrão */
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.dialog-input {
+  height: 38px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+.dialog-input:focus {
+  outline: 2px solid rgba(168, 85, 247, 0.5);
+  outline-offset: 1px;
+}
+
+/* remove as setinhas de incremento/decremento de input[type=number] em todo o
+   painel — usuário digita o valor direto, sem os spinners nativos */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
