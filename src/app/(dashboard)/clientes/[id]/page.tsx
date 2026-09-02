@@ -112,7 +112,7 @@ export default async function ClienteDetalhePage({
                     className={`flex h-[20px] w-fit items-center rounded-[999px] px-[8px] text-[10.5px] font-medium ${
                       r.canal === "presencial"
                         ? "bg-[rgba(125,211,252,0.13)] text-[var(--color-status-sky)]"
-                        : "bg-white/[0.06] text-[var(--color-text-muted)]"
+                        : "bg-[rgba(168,85,247,0.13)] text-[#c4b5fd]"
                     }`}
                   >
                     {r.canal === "presencial" ? "Presencial" : "Online"}
@@ -163,7 +163,7 @@ export default async function ClienteDetalhePage({
                     className={`flex h-[20px] w-fit items-center rounded-[999px] px-[8px] text-[10.5px] font-medium ${
                       r.canal === "presencial"
                         ? "bg-[rgba(125,211,252,0.13)] text-[var(--color-status-sky)]"
-                        : "bg-white/[0.06] text-[var(--color-text-muted)]"
+                        : "bg-[rgba(168,85,247,0.13)] text-[#c4b5fd]"
                     }`}
                   >
                     {r.canal === "presencial" ? "Presencial" : "Online"}
