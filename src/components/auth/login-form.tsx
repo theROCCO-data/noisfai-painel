@@ -1,18 +1,40 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { signIn } from "@/lib/auth-actions";
+import { useRef, useState, useTransition } from "react";
+import { signIn, solicitarResetSenha } from "@/lib/auth-actions";
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [avisoSenha, setAvisoSenha] = useState(false);
+
+  const emailRef = useRef<HTMLInputElement>(null);
+  const [resetPending, startResetTransition] = useTransition();
+  const [resetMsg, setResetMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
 
   function handleSubmit(formData: FormData) {
     setError(null);
     startTransition(async () => {
       const result = await signIn(formData);
       if (result?.error) setError(result.error);
+    });
+  }
+
+  function handleEsqueciSenha() {
+    const email = emailRef.current?.value.trim();
+    if (!email) {
+      setResetMsg({ tipo: "erro", texto: "Digite seu e-mail no campo acima primeiro." });
+      return;
+    }
+    setResetMsg(null);
+    startResetTransition(async () => {
+      const formData = new FormData();
+      formData.set("email", email);
+      const result = await solicitarResetSenha(formData);
+      if ("error" in result) {
+        setResetMsg({ tipo: "erro", texto: result.error });
+      } else {
+        setResetMsg({ tipo: "ok", texto: `Enviamos um link de redefinição pra ${email} (se essa conta existir).` });
+      }
     });
   }
 
@@ -26,25 +48,45 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
 
       <label className="flex flex-col gap-1.5">
         <span className="text-[13px] text-[var(--color-text-secondary)]">E-mail</span>
-        <input name="email" type="email" required placeholder="seu@email.com" className="dialog-input h-[42px]" />
+        <input
+          ref={emailRef}
+          name="email"
+          type="email"
+          autoComplete="username"
+          required
+          placeholder="seu@email.com"
+          className="dialog-input h-[42px]"
+        />
       </label>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-[13px] text-[var(--color-text-secondary)]">Senha</span>
-        <input name="password" type="password" required placeholder="••••••••" className="dialog-input h-[42px]" />
+        <input
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          placeholder="••••••••"
+          className="dialog-input h-[42px]"
+        />
       </label>
 
       <div className="-mt-2.5 flex flex-col items-end gap-1.5">
         <button
           type="button"
-          onClick={() => setAvisoSenha((v) => !v)}
-          className="text-[12.5px] font-medium text-[#a78bfa] hover:underline"
+          onClick={handleEsqueciSenha}
+          disabled={resetPending}
+          className="text-[12.5px] font-medium text-[#a78bfa] hover:underline disabled:opacity-60"
         >
-          Esqueceu sua senha?
+          {resetPending ? "Enviando..." : "Esqueceu sua senha?"}
         </button>
-        {avisoSenha && (
-          <p className="text-right text-[12px] text-[var(--color-text-muted)]">
-            Fale com um desenvolvedor, proprietário ou gerente pra redefinir sua senha.
+        {resetMsg && (
+          <p
+            className={`text-right text-[12px] ${
+              resetMsg.tipo === "ok" ? "text-[var(--color-status-green)]" : "text-[var(--color-status-red)]"
+            }`}
+          >
+            {resetMsg.texto}
           </p>
         )}
       </div>
