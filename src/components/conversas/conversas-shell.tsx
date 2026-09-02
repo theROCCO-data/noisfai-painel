@@ -14,7 +14,7 @@ export function ConversasShell({ lista, children }: { lista: ReactNode; children
   const temConversaAberta = pathname !== "/conversas";
 
   return (
-    <div className="flex h-full w-full gap-4">
+    <div className="flex h-full w-full gap-9">
       <div
         className={`${temConversaAberta ? "hidden lg:flex" : "flex"} h-full w-full flex-col overflow-y-auto rounded-[28px] lg:w-[340px] lg:shrink-0`}
       >
