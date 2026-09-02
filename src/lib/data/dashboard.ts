@@ -148,7 +148,7 @@ export async function getConversasComHumano(): Promise<ConversaHumana[]> {
   if (!chats || chats.length === 0) return [];
 
   const statusPorTelefone = await getStatusHumanoEmLote(chats.map((c) => c.phone));
-  const comHumano = chats.filter((c) => statusPorTelefone.get(c.phone) === true);
+  const comHumano = chats.filter((c) => statusPorTelefone.get(c.phone) === "atencao");
   if (comHumano.length === 0) return [];
 
   const { data: msgs } = await supabase

@@ -4,13 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { formatTelefoneBR, formatHora } from "@/lib/format";
 import { AvatarConversa } from "@/components/conversas/avatar-conversa";
+import type { StatusAtendimento } from "@/lib/data/status-humano";
+
+const BADGE_ESTILO: Record<StatusAtendimento, string> = {
+  ia: "bg-[rgba(96,165,250,0.13)] text-[#60a5fa]",
+  humano: "bg-[rgba(216,180,254,0.13)] text-[#d8b4fe]",
+  atencao: "bg-[rgba(251,191,36,0.13)] text-[var(--color-status-amber)]",
+};
+
+const BADGE_LABEL: Record<StatusAtendimento, string> = {
+  ia: "IA",
+  humano: "HUMANO",
+  atencao: "ATENÇÃO",
+};
 
 export function ConversaListItem({
   conversationId,
   phone,
   ultimaAtualizacao,
   ultimaMensagem,
-  humano,
+  status,
   fotoUrl,
   nomeCliente,
 }: {
@@ -18,7 +31,7 @@ export function ConversaListItem({
   phone: string;
   ultimaAtualizacao: string;
   ultimaMensagem: string;
-  humano: boolean;
+  status: StatusAtendimento;
   fotoUrl: string | null;
   nomeCliente: string | null;
 }) {
@@ -52,14 +65,8 @@ export function ConversaListItem({
           <span className="text-[11.5px] font-display text-[var(--color-text-muted)]">{formatHora(ultimaAtualizacao)}</span>
         </div>
         <p className="line-clamp-1 text-[11.5px] text-[var(--color-text-muted)]">{ultimaMensagem || "—"}</p>
-        <span
-          className={`w-fit rounded-[11px] px-[9px] py-0.5 text-[11px] font-semibold ${
-            humano
-              ? "bg-[rgba(251,191,36,0.13)] text-[var(--color-status-amber)]"
-              : "bg-[rgba(96,165,250,0.13)] text-[#60a5fa]"
-          }`}
-        >
-          {humano ? "HUMANO" : "IA"}
+        <span className={`w-fit rounded-[11px] px-[9px] py-0.5 text-[11px] font-semibold ${BADGE_ESTILO[status]}`}>
+          {BADGE_LABEL[status]}
         </span>
       </div>
     </Link>

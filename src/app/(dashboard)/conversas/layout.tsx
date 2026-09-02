@@ -36,7 +36,7 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
                 phone={c.phone}
                 ultimaAtualizacao={c.ultimaAtualizacao}
                 ultimaMensagem={c.ultimaMensagem}
-                humano={statusPorTelefone.get(c.phone) ?? false}
+                status={statusPorTelefone.get(c.phone) ?? "ia"}
                 fotoUrl={c.fotoUrl}
                 nomeCliente={c.nomeCliente}
               />

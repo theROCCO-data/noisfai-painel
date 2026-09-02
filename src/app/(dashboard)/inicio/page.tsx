@@ -80,9 +80,9 @@ export default async function InicioPage() {
         />
         <KpiCard
           icon={Headset}
-          label="COM ATENDIMENTO HUMANO"
+          label="PRECISA DE ATENÇÃO"
           value={conversasComHumano.length}
-          hint="precisam de resposta"
+          hint="clientes pedindo humano"
         />
         <KpiCard
           icon={MessageCircle}
@@ -139,7 +139,7 @@ export default async function InicioPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-[13px] font-semibold text-[var(--color-text-primary)]">{c.telefoneFormatado}</p>
                     <span className="flex h-[18px] items-center rounded-[999px] bg-[rgba(251,191,36,0.16)] px-[8px] text-[10.5px] font-semibold text-[var(--color-status-amber)]">
-                      HUMANO
+                      ATENÇÃO
                     </span>
                   </div>
                   <p className="line-clamp-1 text-[11.5px] italic text-[var(--color-text-secondary)]">

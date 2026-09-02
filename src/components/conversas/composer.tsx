@@ -3,22 +3,24 @@
 import { useState, useTransition } from "react";
 import { Send, Bot } from "lucide-react";
 import { enviarMensagem } from "@/lib/data/status-humano-actions";
+import type { StatusAtendimento } from "@/lib/data/status-humano";
 
 export function Composer({
   telefone,
   conversationId,
-  humano,
+  status,
 }: {
   telefone: string;
   conversationId: string;
-  humano: boolean;
+  status: StatusAtendimento;
 }) {
   const [texto, setTexto] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const podeEnviar = status === "humano";
 
   function enviar() {
-    if (!texto.trim() || pending || !humano) return;
+    if (!texto.trim() || pending || !podeEnviar) return;
     setError(null);
     const mensagem = texto;
     startTransition(async () => {
@@ -28,12 +30,14 @@ export function Composer({
     });
   }
 
-  if (!humano) {
+  if (!podeEnviar) {
     return (
       <div className="flex w-full shrink-0 items-center gap-2.5 border-t border-[var(--color-border)] bg-[rgba(168,85,247,0.05)] px-[22px] py-4">
         <Bot size={16} className="shrink-0 text-[#d8b4fe]" />
         <p className="text-[13px] text-[var(--color-text-secondary)]">
-          A IA está respondendo essa conversa agora. Clique em <span className="font-semibold text-[#d8b4fe]">&quot;Iniciar Atendimento Humano&quot;</span> acima para assumir e poder enviar mensagens.
+          {status === "atencao"
+            ? <>O cliente pediu atendimento humano. Clique em <span className="font-semibold text-[#d8b4fe]">&quot;Assumir atendimento&quot;</span> acima para poder enviar mensagens.</>
+            : <>A IA está respondendo essa conversa agora. Clique em <span className="font-semibold text-[#d8b4fe]">&quot;Iniciar Atendimento Humano&quot;</span> acima para assumir e poder enviar mensagens.</>}
         </p>
       </div>
     );

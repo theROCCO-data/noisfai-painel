@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, UserRound } from "lucide-react";
+import { ArrowLeft, UserRound, AlertCircle } from "lucide-react";
 import { getConversa } from "@/lib/data/conversas";
 import { formatTelefoneBR } from "@/lib/format";
 import { getStatusHumano } from "@/lib/data/status-humano";
@@ -20,7 +20,7 @@ export default async function ConversaPage({
 
   if (!conversa) notFound();
 
-  const humano = await getStatusHumano(conversa.phone);
+  const status = await getStatusHumano(conversa.phone);
   const label = formatTelefoneBR(conversa.phone);
 
   return (
@@ -46,14 +46,23 @@ export default async function ConversaPage({
           <PerfilContatoDialog telefone={conversa.phone} />
         </div>
         <div className="w-full shrink-0 lg:w-auto">
-          <ToggleAtendimentoHumano telefone={conversa.phone} conversationId={conversa.conversationId} humano={humano} />
+          <ToggleAtendimentoHumano telefone={conversa.phone} conversationId={conversa.conversationId} status={status} />
         </div>
       </header>
 
-      {humano && (
+      {status === "atencao" && (
         <div className="flex w-full items-center justify-center gap-2 border-b border-[rgba(251,191,36,0.2)] bg-[rgba(251,191,36,0.08)] px-[22px] py-2">
-          <UserRound size={14} className="text-[var(--color-status-amber)]" />
+          <AlertCircle size={14} className="text-[var(--color-status-amber)]" />
           <span className="text-[13px] font-medium text-[var(--color-status-amber)]">
+            O cliente pediu para falar com um humano — clique em &quot;Assumir atendimento&quot; para responder
+          </span>
+        </div>
+      )}
+
+      {status === "humano" && (
+        <div className="flex w-full items-center justify-center gap-2 border-b border-[rgba(216,180,254,0.2)] bg-[rgba(216,180,254,0.08)] px-[22px] py-2">
+          <UserRound size={14} className="text-[#d8b4fe]" />
+          <span className="text-[13px] font-medium text-[#d8b4fe]">
             Atendimento com humano — o bot está pausado nessa conversa (volta sozinho em até 1h, ou clique em &quot;Devolver ao bot&quot;)
           </span>
         </div>
@@ -61,7 +70,7 @@ export default async function ConversaPage({
 
       <ListaMensagens mensagens={conversa.mensagens} />
 
-      <Composer telefone={conversa.phone} conversationId={conversa.conversationId} humano={humano} />
+      <Composer telefone={conversa.phone} conversationId={conversa.conversationId} status={status} />
     </>
   );
 }

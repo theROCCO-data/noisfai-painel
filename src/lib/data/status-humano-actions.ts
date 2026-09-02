@@ -56,11 +56,11 @@ export async function enviarMensagem(
   // reforço no servidor, não só na UI: só deixa enviar se a conversa
   // estiver mesmo com atendimento humano assumido — evita bot e atendente
   // falando ao mesmo tempo com o cliente.
-  const humano = await getStatusHumano(telefone);
-  if (!humano) {
+  const status = await getStatusHumano(telefone);
+  if (status !== "humano") {
     return {
       ok: false,
-      error: 'Essa conversa está com a IA no momento. Clique em "Iniciar Atendimento Humano" antes de enviar.',
+      error: 'Essa conversa não está com atendimento humano assumido. Clique em "Assumir atendimento" antes de enviar.',
     };
   }
 
