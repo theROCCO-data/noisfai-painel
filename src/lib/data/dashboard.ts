@@ -24,7 +24,7 @@ export async function getReservasHoje() {
     .from("reservas")
     .select("id, horario, nome, pessoas, status, turno")
     .eq("data", data)
-    .neq("status", "cancelada")
+    .neq("status", "cancelado")
     .order("horario", { ascending: true });
 
   if (error) throw new Error(`getReservasHoje: ${error.message}`);
@@ -61,7 +61,7 @@ export async function getReservasFeitasHoje() {
     .from("reservas")
     .select("id", { count: "exact", head: true })
     .gte("created_at", inicio)
-    .neq("status", "cancelada");
+    .neq("status", "cancelado");
 
   if (error) throw new Error(`getReservasFeitasHoje: ${error.message}`);
   return count ?? 0;

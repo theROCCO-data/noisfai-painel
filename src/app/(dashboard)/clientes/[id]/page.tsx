@@ -25,7 +25,7 @@ export default async function ClienteDetalhePage({
 
   const reservasHarmonizado = cliente.reservas.filter((r) => r.tipo === "harmonizado");
   const valorTotalHarmonizado = reservasHarmonizado
-    .filter((r) => r.status !== "cancelada")
+    .filter((r) => r.status !== "cancelado")
     .reduce((acc, r) => acc + (r.valorEstimado ?? 0), 0);
 
   return (

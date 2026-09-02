@@ -140,7 +140,7 @@ export async function getClientesStats(filtro: { de?: string; ate?: string }): P
   const [{ count: total }, { count: novosNoPeriodo }, { data: reservasClienteId }] = await Promise.all([
     supabase.from("clientes").select("id", { count: "exact", head: true }),
     queryPeriodo,
-    supabase.from("reservas").select("cliente_id").not("cliente_id", "is", null).neq("status", "cancelada"),
+    supabase.from("reservas").select("cliente_id").not("cliente_id", "is", null).neq("status", "cancelado"),
   ]);
 
   const contagem = new Map<number, number>();
@@ -226,9 +226,9 @@ export async function getClienteDetalhe(id: number): Promise<ClienteDetalhe | nu
     email: cliente.email,
     telefone: cliente.telefone,
     reservas,
-    totalReservas: reservas.filter((r) => r.status !== "cancelada").length,
+    totalReservas: reservas.filter((r) => r.status !== "cancelado").length,
     totalPessoasAtendidas: reservas
-      .filter((r) => r.status !== "cancelada")
+      .filter((r) => r.status !== "cancelado")
       .reduce((acc, r) => acc + r.pessoas, 0),
   };
 }

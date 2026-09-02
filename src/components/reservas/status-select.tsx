@@ -44,8 +44,8 @@ export function StatusSelect({ reservaId, status }: { reservaId: number; status:
     };
   }, [open]);
 
-  // cancelada não tem menu — o cancelamento tem fluxo próprio (botão de cancelar)
-  if (valor === "cancelada") {
+  // cancelado não tem menu — o cancelamento tem fluxo próprio (botão de cancelar)
+  if (valor === "cancelado") {
     return <StatusBadge status={valor} />;
   }
 

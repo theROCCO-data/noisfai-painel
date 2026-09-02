@@ -68,7 +68,7 @@ export async function getPreReservasJH(): Promise<PreReservaJH[]> {
     .from("reservas")
     .select("id, nome, pessoas, data, status_pagamento, comprovante_url, canal")
     .ilike("objetivo", "%harmonizado%")
-    .neq("status", "cancelada")
+    .neq("status", "cancelado")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`getPreReservasJH: ${error.message}`);

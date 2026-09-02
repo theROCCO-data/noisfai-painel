@@ -77,7 +77,7 @@ export function ReservaDetalhesDialog({
                 {editando ? "Editar reserva" : "Detalhes da reserva"}
               </h2>
               <div className="flex items-center gap-3">
-                {!editando && reserva.status !== "cancelada" && (
+                {!editando && reserva.status !== "cancelado" && (
                   <button
                     onClick={() => setEditando(true)}
                     className="flex h-8 items-center gap-1.5 rounded-[999px] border border-[var(--color-border-soft)] px-4 text-[12.5px] font-medium text-[var(--color-text-secondary)] hover:bg-white/[0.05]"
@@ -209,7 +209,7 @@ export function ReservaDetalhesDialog({
                   </p>
                 </div>
 
-                {reserva.status === "cancelada" && reserva.motivoCancelamento && (
+                {reserva.status === "cancelado" && reserva.motivoCancelamento && (
                   <div className="flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-3">
                     <span className="text-[12px] text-[var(--color-status-red)]">Motivo do cancelamento</span>
                     <p className="whitespace-pre-wrap text-[13.5px] leading-[1.5] text-[var(--color-text-primary)]">

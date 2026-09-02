@@ -108,7 +108,7 @@ export default async function ReservasPage({
                 { value: "pendente", label: "Pendente" },
                 { value: "compareceu", label: "Compareceu" },
                 { value: "nao_compareceu", label: "Não compareceu" },
-                { value: "cancelada", label: "Cancelado" },
+                { value: "cancelado", label: "Cancelado" },
               ]}
             />
           </div>
@@ -196,7 +196,7 @@ export default async function ReservasPage({
                 <div className="flex items-center gap-2">
                   <ObservacaoPopup observacao={r.observacao} motivoCancelamento={r.motivoCancelamento} nome={r.nome} />
                   <ReservaDetalhesDialog reserva={r} responsavelNome={nomeResponsavel(r.responsavelUserId)} atendentes={atendentes} />
-                  {r.status !== "cancelada" && <CancelarReservaButton reservaId={r.id} nome={r.nome} />}
+                  {r.status !== "cancelado" && <CancelarReservaButton reservaId={r.id} nome={r.nome} />}
                 </div>
               </div>
             </div>
@@ -273,7 +273,7 @@ export default async function ReservasPage({
                   <div className="flex w-[210px] shrink-0 items-center gap-2 border-l border-white/10 pl-4">
                     <ObservacaoPopup observacao={r.observacao} motivoCancelamento={r.motivoCancelamento} nome={r.nome} />
                     <ReservaDetalhesDialog reserva={r} responsavelNome={nomeResponsavel(r.responsavelUserId)} atendentes={atendentes} />
-                    {r.status !== "cancelada" && <CancelarReservaButton reservaId={r.id} nome={r.nome} />}
+                    {r.status !== "cancelado" && <CancelarReservaButton reservaId={r.id} nome={r.nome} />}
                   </div>
                 </div>
               ))

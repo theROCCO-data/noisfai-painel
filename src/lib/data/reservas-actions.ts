@@ -139,7 +139,7 @@ export async function atualizarReserva(reservaId: number, input: EditarReservaIn
   if (!reserva) return { ok: false, error: "Reserva não encontrada." };
 
   const diffPessoas = input.pessoas - reserva.pessoas;
-  if (diffPessoas !== 0 && reserva.status !== "cancelada") {
+  if (diffPessoas !== 0 && reserva.status !== "cancelado") {
     const { data: capacidade, error: capErr } = await supabase
       .from("capacidade_turno")
       .select("id, reservado, disponivel_atual")
@@ -216,7 +216,7 @@ export async function cancelarReserva(reservaId: number, motivo?: string): Promi
 const STATUS_PERMITIDOS_NO_MENU = ["confirmada", "pendente", "compareceu", "nao_compareceu"];
 
 /**
- * Muda o status pelo menu inline da tabela — não inclui "cancelada" de
+ * Muda o status pelo menu inline da tabela — não inclui "cancelado" de
  * propósito: cancelar tem fluxo próprio (devolve vaga via RPC + motivo),
  * só isso mexe em `capacidade_turno`. Marcar comparecimento é só rótulo,
  * não devolve nem consome vaga.
@@ -231,7 +231,7 @@ export async function atualizarStatusReserva(reservaId: number, status: string):
     .from("reservas")
     .update({ status, origem_alteracao: "painel" })
     .eq("id", reservaId)
-    .neq("status", "cancelada");
+    .neq("status", "cancelado");
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/reservas");
