@@ -22,12 +22,24 @@ export async function atualizarPerfil(formData: FormData): Promise<ActionResult>
   // gerente pode mudar o próprio cargo por aqui — os demais mantêm o cargo
   // atual mesmo que enviem outro valor (mudança de cargo pra eles precisa
   // vir de alguém com permissão, editando via "Usuários e permissões").
-  const cargoAtual = (user.user_metadata?.cargo as string | undefined) ?? "";
+  //
+  // cargoAtual vem de app_metadata (nunca user_metadata): esse campo só o
+  // servidor consegue escrever, via service_role — se estivesse em
+  // user_metadata, qualquer usuário logado poderia se auto-promover
+  // chamando supabase.auth.updateUser() direto pelo navegador, ignorando
+  // completamente essa checagem.
+  const cargoAtual = (user.app_metadata?.cargo as string | undefined) ?? "";
   const podeMudarCargo = CARGOS_PODEM_MUDAR_CARGO.includes(cargoAtual.toLowerCase());
   const cargo = podeMudarCargo ? cargoEnviado : cargoAtual;
 
-  const { error } = await supabase.auth.updateUser({ data: { nome, cargo } });
+  const { error } = await supabase.auth.updateUser({ data: { nome } });
   if (error) return { ok: false, error: error.message };
+
+  if (podeMudarCargo && cargo !== cargoAtual) {
+    const admin = createAdminClient();
+    const { error: cargoErr } = await admin.auth.admin.updateUserById(user.id, { app_metadata: { cargo } });
+    if (cargoErr) return { ok: false, error: cargoErr.message };
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };

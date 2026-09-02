@@ -19,7 +19,8 @@ export async function listUsuarios(): Promise<Usuario[]> {
       id: u.id,
       nome: (u.user_metadata?.nome as string | undefined) ?? u.email?.split("@")[0] ?? "—",
       email: u.email ?? "",
-      cargo: (u.user_metadata?.cargo as string | undefined) ?? "Equipe",
+      // app_metadata, não user_metadata — ver nota de segurança em src/lib/auth.ts
+      cargo: (u.app_metadata?.cargo as string | undefined) ?? "Equipe",
       ativo: !!u.email_confirmed_at,
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));

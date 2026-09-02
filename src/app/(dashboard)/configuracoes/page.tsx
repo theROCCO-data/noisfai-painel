@@ -35,7 +35,7 @@ export default async function ConfiguracoesPage() {
       <div className="w-full overflow-hidden rounded-[26px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-[18px] py-[14px]">
           <h2 className="font-display text-[16px] font-semibold text-[var(--color-text-primary)]">Usuários e permissões</h2>
-          <ConvidarUsuarioDialog />
+          {podeRemover && <ConvidarUsuarioDialog />}
         </div>
 
         {/* Mobile: lista de cartões — a tabela de colunas fixas não cabe numa tela pequena */}
