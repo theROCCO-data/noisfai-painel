@@ -26,7 +26,7 @@ export default async function ConversaPage({
   return (
     <>
       <header className="flex w-full shrink-0 flex-col gap-2.5 border-b border-[var(--color-border)] px-4 py-2.5 lg:h-[88px] lg:flex-row lg:items-center lg:gap-3 lg:px-[22px] lg:py-0">
-        <div className="flex w-full min-w-0 items-center gap-3">
+        <div className="flex w-full min-w-0 items-center gap-3 lg:flex-1">
           <Link
             href="/conversas"
             className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--color-text-muted)] lg:hidden"
@@ -45,8 +45,7 @@ export default async function ConversaPage({
           </div>
           <PerfilContatoDialog telefone={conversa.phone} />
         </div>
-        <div className="hidden h-px flex-1 lg:block" />
-        <div className="w-full lg:w-auto [&>button]:w-full lg:[&>button]:w-auto">
+        <div className="w-full shrink-0 lg:w-auto">
           <ToggleAtendimentoHumano telefone={conversa.phone} conversationId={conversa.conversationId} humano={humano} />
         </div>
       </header>
