@@ -55,7 +55,7 @@ export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = nu
 
   return (
     <aside className="flex h-full w-[236px] shrink-0 flex-col gap-[2px] overflow-clip rounded-tr-[28px] rounded-br-[28px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[#0a0613] px-[10px] py-[18px]">
-      <div className="flex items-center gap-[10px] overflow-clip px-[8px] pb-[22px]">
+      <div className="flex items-center gap-[10px] px-[8px] pb-[22px]">
         <LogoUploadButton logoUrl={logoUrl} />
         <div className="flex flex-col gap-px whitespace-nowrap">
           <span className="font-display text-[14.5px] font-semibold text-[var(--color-text-primary)]">

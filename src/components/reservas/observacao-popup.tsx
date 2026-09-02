@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquareText, X } from "lucide-react";
+import { MessageSquareText, X, Ban } from "lucide-react";
 
-export function ObservacaoPopup({ observacao, nome }: { observacao: string | null; nome: string }) {
+export function ObservacaoPopup({
+  observacao,
+  motivoCancelamento,
+  nome,
+}: {
+  observacao: string | null;
+  motivoCancelamento?: string | null;
+  nome: string;
+}) {
   const [open, setOpen] = useState(false);
+  const temAlgo = !!observacao || !!motivoCancelamento;
 
-  if (!observacao) {
+  if (!temAlgo) {
     return (
       <span title="Sem observação" className="flex shrink-0 items-center text-[var(--color-text-muted)]">
         <MessageSquareText size={15} />
@@ -38,12 +47,27 @@ export function ObservacaoPopup({ observacao, nome }: { observacao: string | nul
                 <X size={18} />
               </button>
             </div>
-            <div className="flex items-start gap-2.5 rounded-[14px] border border-white/[0.08] bg-white/[0.04] p-4">
-              <MessageSquareText size={15} className="mt-0.5 shrink-0 text-[var(--color-text-muted)]" />
-              <p className="whitespace-pre-wrap text-[13.5px] leading-[1.5] text-[var(--color-text-primary)]">
-                {observacao}
-              </p>
-            </div>
+
+            {observacao && (
+              <div className="flex items-start gap-2.5 rounded-[14px] border border-white/[0.08] bg-white/[0.04] p-4">
+                <MessageSquareText size={15} className="mt-0.5 shrink-0 text-[var(--color-text-muted)]" />
+                <p className="whitespace-pre-wrap text-[13.5px] leading-[1.5] text-[var(--color-text-primary)]">
+                  {observacao}
+                </p>
+              </div>
+            )}
+
+            {motivoCancelamento && (
+              <div className="flex flex-col gap-1.5 rounded-[14px] border border-[rgba(248,113,113,0.22)] bg-[rgba(248,113,113,0.07)] p-4">
+                <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--color-status-red)]">
+                  <Ban size={13} />
+                  Motivo do cancelamento
+                </div>
+                <p className="whitespace-pre-wrap text-[13.5px] leading-[1.5] text-[var(--color-text-primary)]">
+                  {motivoCancelamento}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

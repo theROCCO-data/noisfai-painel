@@ -194,7 +194,7 @@ export default async function ReservasPage({
               <div className="flex items-center justify-between gap-2 border-t border-white/5 pt-3">
                 <StatusSelect reservaId={r.id} status={r.status} />
                 <div className="flex items-center gap-2">
-                  <ObservacaoPopup observacao={r.observacao} nome={r.nome} />
+                  <ObservacaoPopup observacao={r.observacao} motivoCancelamento={r.motivoCancelamento} nome={r.nome} />
                   <ReservaDetalhesDialog reserva={r} responsavelNome={nomeResponsavel(r.responsavelUserId)} atendentes={atendentes} />
                   {r.status !== "cancelada" && <CancelarReservaButton reservaId={r.id} nome={r.nome} />}
                 </div>
@@ -271,7 +271,7 @@ export default async function ReservasPage({
                     </Coluna>
                   </div>
                   <div className="flex w-[210px] shrink-0 items-center gap-2 border-l border-white/10 pl-4">
-                    <ObservacaoPopup observacao={r.observacao} nome={r.nome} />
+                    <ObservacaoPopup observacao={r.observacao} motivoCancelamento={r.motivoCancelamento} nome={r.nome} />
                     <ReservaDetalhesDialog reserva={r} responsavelNome={nomeResponsavel(r.responsavelUserId)} atendentes={atendentes} />
                     {r.status !== "cancelada" && <CancelarReservaButton reservaId={r.id} nome={r.nome} />}
                   </div>
