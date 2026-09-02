@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 const NOVA = "__nova__";
 
@@ -39,26 +40,21 @@ export function CategoriaField({
   }
 
   return (
-    <label className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1">
       <span className="text-[12px] text-[var(--color-text-muted)]">Categoria</span>
-      <select
+      <CustomSelect
         name="categoria"
-        required
-        className="dialog-input"
-        value={valorSelect}
-        onChange={(e) => {
-          if (e.target.value === NOVA) setCriandoNova(true);
-          else setValorSelect(e.target.value);
+        defaultValue={valorSelect}
+        placeholder={categorias.length === 0 ? "Nenhuma categoria ainda" : "Selecione..."}
+        options={[
+          ...categorias.map((c) => ({ value: c, label: c })),
+          { value: NOVA, label: "+ Criar nova categoria..." },
+        ]}
+        onChange={(v) => {
+          if (v === NOVA) setCriandoNova(true);
+          else setValorSelect(v);
         }}
-      >
-        {categorias.length === 0 && <option value="">Nenhuma categoria ainda</option>}
-        {categorias.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-        <option value={NOVA}>+ Criar nova categoria...</option>
-      </select>
-    </label>
+      />
+    </div>
   );
 }
