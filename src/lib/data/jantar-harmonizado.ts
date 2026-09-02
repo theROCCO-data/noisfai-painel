@@ -83,3 +83,32 @@ export async function getPreReservasJH(): Promise<PreReservaJH[]> {
     canal: r.canal ?? "online",
   }));
 }
+
+export type EdicaoHistoricoJH = {
+  id: number;
+  titulo: string | null;
+  valorPessoa: number;
+  dataEvento: string;
+  cotaVagas: number | null;
+  arquivadoEm: string;
+};
+
+export async function listHistoricoJH(): Promise<EdicaoHistoricoJH[]> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("eventos_especiais_historico")
+    .select("id, titulo, valor_pessoa, data_evento, cota_vagas, arquivado_em")
+    .order("arquivado_em", { ascending: false });
+
+  if (error) throw new Error(`listHistoricoJH: ${error.message}`);
+
+  return (data ?? []).map((h) => ({
+    id: h.id,
+    titulo: h.titulo,
+    valorPessoa: h.valor_pessoa,
+    dataEvento: h.data_evento,
+    cotaVagas: h.cota_vagas,
+    arquivadoEm: h.arquivado_em,
+  }));
+}

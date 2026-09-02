@@ -16,6 +16,34 @@ export async function atualizarEdicaoJH(formData: FormData): Promise<ActionResul
   const imagemUrlColada = String(formData.get("imagemUrl") ?? "");
   const arquivo = formData.get("imagemArquivo");
 
+  // arquiva o estado ATUAL antes de sobrescrever — é isso que alimenta o
+  // histórico de edições anteriores. Só existe uma linha ativa em
+  // eventos_especiais (é o que o bot lê), então o histórico mora numa
+  // tabela separada e não afeta essa leitura.
+  const { data: antes } = await supabase
+    .from("eventos_especiais")
+    .select("id, nome, titulo, valor_pessoa, data_evento, ativo, imagem_url")
+    .eq("id", id)
+    .maybeSingle();
+  if (antes) {
+    const { data: capacidadeAntes } = await supabase
+      .from("capacidade_turno")
+      .select("capacidade_bot")
+      .eq("turno", "jantar_harmonizado")
+      .eq("data", antes.data_evento)
+      .maybeSingle();
+    await supabase.from("eventos_especiais_historico").insert({
+      evento_id: antes.id,
+      nome: antes.nome,
+      titulo: antes.titulo,
+      valor_pessoa: antes.valor_pessoa,
+      data_evento: antes.data_evento,
+      ativo: antes.ativo,
+      imagem_url: antes.imagem_url,
+      cota_vagas: capacidadeAntes?.capacidade_bot ?? null,
+    });
+  }
+
   let imagemUrl = imagemUrlColada || null;
 
   if (arquivo instanceof File && arquivo.size > 0) {
@@ -62,6 +90,21 @@ export async function atualizarEdicaoJH(formData: FormData): Promise<ActionResul
       });
     }
   }
+
+  revalidatePath("/jantar-harmonizado");
+  revalidatePath("/inicio");
+  return { ok: true };
+}
+
+export async function confirmarPagamentoJH(reservaId: number): Promise<ActionResult> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("reservas")
+    .update({ status_pagamento: "confirmado" })
+    .eq("id", reservaId);
+
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/jantar-harmonizado");
   revalidatePath("/inicio");
