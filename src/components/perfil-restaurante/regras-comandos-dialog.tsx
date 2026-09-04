@@ -79,7 +79,7 @@ export function RegrasComandosDialog({ fatos }: { fatos: FatoRestaurante[] }) {
             {!pasta && (
               <p className="-mt-2 text-[11.5px] leading-[1.5] text-[var(--color-text-muted)]">
                 Regras, políticas e outras informações de referência do restaurante, organizadas por assunto — a mesma
-                base que hoje alimenta o RAG do bot via planilha.
+                base que alimenta o RAG do bot.
               </p>
             )}
 
