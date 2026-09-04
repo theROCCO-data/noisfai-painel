@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 type KpiCardProps = {
   icon: LucideIcon;
@@ -8,6 +9,8 @@ type KpiCardProps = {
   hint: string;
   highlighted?: boolean;
   progressPct?: number;
+  /** Texto curto explicando o que esse número representa — mostra um ícone de "i" clicável ao lado do rótulo. */
+  info?: string;
 };
 
 export function KpiCard({
@@ -18,6 +21,7 @@ export function KpiCard({
   hint,
   highlighted,
   progressPct,
+  info,
 }: KpiCardProps) {
   return (
     <div
@@ -39,6 +43,7 @@ export function KpiCard({
         <span className="text-[10.5px] font-medium tracking-[0.42px] text-[var(--color-text-muted)]">
           {label}
         </span>
+        {info && <InfoTooltip texto={info} />}
       </div>
       <p className="relative font-display text-[36px] font-semibold leading-[1.2] text-[var(--color-text-primary)]">
         {value}

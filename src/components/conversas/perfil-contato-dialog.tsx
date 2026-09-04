@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Info, X, Phone, ExternalLink, Loader2 } from "lucide-react";
 import { buscarPerfilContato, type PerfilContato } from "@/lib/data/perfil-whatsapp-actions";
 import { formatTelefoneBR } from "@/lib/format";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function PerfilContatoDialog({ telefone }: { telefone: string }) {
   const [open, setOpen] = useState(false);
@@ -24,11 +25,14 @@ export function PerfilContatoDialog({ telefone }: { telefone: string }) {
 
   const iniciais = telefone.slice(-2);
 
+  useEscapeClose(open, () => setOpen(false));
+
   return (
     <>
       <button
         onClick={abrir}
         title="Ver perfil do contato"
+        aria-label="Ver perfil do contato"
         className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-white/[0.06] hover:text-[var(--color-text-primary)]"
       >
         <Info size={18} />
@@ -42,7 +46,7 @@ export function PerfilContatoDialog({ telefone }: { telefone: string }) {
           >
             <div className="flex w-full items-center justify-between">
               <p className="font-display text-[15px] font-semibold text-[var(--color-text-primary)]">Perfil do contato</p>
-              <button onClick={() => setOpen(false)} className="text-[var(--color-text-muted)]">
+              <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>

@@ -4,8 +4,11 @@ import { useState, useTransition } from "react";
 import { X, Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MaskedTimeInput } from "@/components/ui/masked-time-input";
+import { MaskedCpfInput } from "@/components/ui/masked-cpf-input";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { atualizarReserva } from "@/lib/data/reservas-actions";
+import { toast } from "@/lib/toast";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 import type { Reserva } from "@/lib/data/reservas";
 
 function formatData(d: string) {
@@ -52,10 +55,16 @@ export function ReservaDetalhesDialog({
         canal: formData.get("canal") === "online" ? "online" : "presencial",
         responsavelUserId: responsavel === "chatbot" ? null : responsavel,
       });
-      if (result.ok) setEditando(false);
-      else setError(result.error);
+      if (result.ok) {
+        setEditando(false);
+        toast("Reserva atualizada.");
+      } else {
+        setError(result.error);
+      }
     });
   }
+
+  useEscapeClose(open, fechar);
 
   return (
     <>
@@ -86,7 +95,7 @@ export function ReservaDetalhesDialog({
                     Editar reserva
                   </button>
                 )}
-                <button onClick={fechar} className="text-[var(--color-text-muted)]">
+                <button onClick={fechar} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                   <X size={18} />
                 </button>
               </div>
@@ -99,7 +108,7 @@ export function ReservaDetalhesDialog({
                 </Field>
                 <div className="flex gap-3">
                   <Field label="CPF" className="flex-1">
-                    <input name="cpf" defaultValue={reserva.cpf ?? ""} className="dialog-input" />
+                    <MaskedCpfInput name="cpf" defaultValue={reserva.cpf ?? ""} />
                   </Field>
                   <Field label="E-mail" className="flex-1">
                     <input name="email" type="email" defaultValue={reserva.email ?? ""} className="dialog-input" />
@@ -149,12 +158,7 @@ export function ReservaDetalhesDialog({
                   <input name="objetivo" defaultValue={reserva.objetivo ?? ""} className="dialog-input" />
                 </Field>
                 <Field label="Observação (opcional)">
-                  <textarea
-                    name="observacao"
-                    defaultValue={reserva.observacao ?? ""}
-                    rows={3}
-                    className="dialog-input h-auto resize-y py-2"
-                  />
+                  <input name="observacao" defaultValue={reserva.observacao ?? ""} className="dialog-input" />
                 </Field>
 
                 <p className="text-[11px] text-[var(--color-text-muted)]">

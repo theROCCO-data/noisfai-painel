@@ -3,8 +3,11 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { salvarItemIfood, excluirItemIfood } from "@/lib/data/ifood-actions";
+import { toast } from "@/lib/toast";
 import { Toggle } from "@/components/ui/toggle";
 import { CategoriaField } from "@/components/ui/categoria-field";
+import { useEscapeClose } from "@/hooks/use-escape-close";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { ItemIfood } from "@/lib/data/ifood";
 
 export function ItemIfoodDialog({
@@ -18,6 +21,7 @@ export function ItemIfoodDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(formData: FormData) {
@@ -31,19 +35,30 @@ export function ItemIfoodDialog({
         preco: Number(formData.get("preco") ?? 0),
         disponivel: formData.get("disponivel") === "on",
       });
-      if (result.ok) setOpen(false);
-      else setError(result.error);
+      if (result.ok) {
+        setOpen(false);
+        toast(item ? "Item salvo." : "Item adicionado.");
+      } else {
+        setError(result.error);
+      }
     });
   }
 
   function handleDelete() {
-    if (!item || !confirm(`Excluir "${item.nome}"?`)) return;
+    if (!item) return;
     startTransition(async () => {
       const result = await excluirItemIfood(item.id);
-      if (result.ok) setOpen(false);
-      else setError(result.error);
+      setConfirmandoExclusao(false);
+      if (result.ok) {
+        setOpen(false);
+        toast("Item excluído.");
+      } else {
+        setError(result.error);
+      }
     });
   }
+
+  useEscapeClose(open, () => setOpen(false));
 
   return (
     <>
@@ -56,7 +71,7 @@ export function ItemIfoodDialog({
               <h2 className="font-display text-[17px] font-semibold text-[var(--color-text-primary)]">
                 {item ? "Editar item iFood" : "Novo item iFood"}
               </h2>
-              <button onClick={() => setOpen(false)} className="text-[var(--color-text-muted)]">
+              <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>
@@ -77,7 +92,7 @@ export function ItemIfoodDialog({
               </div>
               <label className="flex flex-col gap-1">
                 <span className="text-[12px] text-[var(--color-text-muted)]">Descrição</span>
-                <textarea name="descricao" defaultValue={item?.descricao ?? ""} rows={5} className="dialog-input h-auto resize-y py-2" />
+                <textarea name="descricao" defaultValue={item?.descricao ?? ""} className="dialog-input h-auto min-h-[140px] overflow-y-auto py-2.5 leading-[1.6]" />
               </label>
               <Toggle name="disponivel" defaultChecked={item?.disponivel ?? true} label="Disponível para pedido" />
 
@@ -85,7 +100,11 @@ export function ItemIfoodDialog({
 
               <div className="mt-2 flex items-center justify-between">
                 {item ? (
-                  <button type="button" onClick={handleDelete} className="text-[13px] font-medium text-[var(--color-status-red)]">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmandoExclusao(true)}
+                    className="text-[13px] font-medium text-[var(--color-status-red)]"
+                  >
                     Excluir item
                   </button>
                 ) : (
@@ -112,6 +131,18 @@ export function ItemIfoodDialog({
             </form>
           </div>
         </div>
+      )}
+
+      {item && (
+        <ConfirmDialog
+          open={confirmandoExclusao}
+          titulo="Excluir item"
+          mensagem={`Excluir "${item.nome}"?`}
+          confirmarLabel="Excluir"
+          pending={pending}
+          onConfirmar={handleDelete}
+          onCancelar={() => setConfirmandoExclusao(false)}
+        />
       )}
     </>
   );

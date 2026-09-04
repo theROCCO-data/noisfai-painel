@@ -16,6 +16,7 @@ export function Relogio() {
   const [hora, setHora] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- evita mismatch de hidratação (ver comentário abaixo)
     setHora(horaAtual());
     const id = setInterval(() => setHora(horaAtual()), 1000);
     return () => clearInterval(id);

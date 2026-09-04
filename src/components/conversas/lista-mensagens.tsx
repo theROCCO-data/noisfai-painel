@@ -18,7 +18,6 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
   // sem isso o F5/troca de conversa jogava a tela pro topo (a mais antiga)
   useEffect(() => {
     irParaOFim();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // a cada mensagem nova (inclusive as que chegam pelo auto-refresh de 4s),
@@ -26,7 +25,6 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
   // o histórico, o refresh não deve puxar ele de volta pra baixo.
   useEffect(() => {
     if (grudadoNoFim.current) irParaOFim("smooth");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mensagens.length]);
 
   function handleScroll() {

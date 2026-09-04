@@ -6,10 +6,12 @@ export function Toggle({
   name,
   defaultChecked,
   label,
+  onChange,
 }: {
   name: string;
   defaultChecked?: boolean;
   label: string;
+  onChange?: (checked: boolean) => void;
 }) {
   const [checked, setChecked] = useState(defaultChecked ?? false);
 
@@ -20,7 +22,12 @@ export function Toggle({
         type="button"
         role="switch"
         aria-checked={checked}
-        onClick={() => setChecked((c) => !c)}
+        onClick={() =>
+          setChecked((c) => {
+            onChange?.(!c);
+            return !c;
+          })
+        }
         className="relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors"
         style={{
           backgroundImage: checked

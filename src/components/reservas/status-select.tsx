@@ -22,7 +22,10 @@ export function StatusSelect({ reservaId, status }: { reservaId: number; status:
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMontado(true), []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- só habilita o portal depois de montar no client
+    setMontado(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;

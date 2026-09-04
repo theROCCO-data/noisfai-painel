@@ -1,9 +1,14 @@
 import { Search, ChevronLeft, ChevronRight, Users, UserPlus, Repeat } from "lucide-react";
 import Link from "next/link";
 import { listClientes, getClientesStats } from "@/lib/data/clientes";
+import { listModelosMensagem } from "@/lib/data/modelos-mensagem";
+import { getCurrentStaffUser } from "@/lib/auth";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PeriodoDropdown } from "@/components/clientes/periodo-dropdown";
 import { ExportarDropdown } from "@/components/clientes/exportar-dropdown";
+import { NovoClienteDialog } from "@/components/clientes/novo-cliente-dialog";
+import { IniciarConversaButton } from "@/components/clientes/iniciar-conversa-button";
+import { EditarClienteButton } from "@/components/clientes/editar-cliente-button";
 import { TabelaRedimensionavel, Coluna } from "@/components/ui/tabela-redimensionavel";
 
 export const dynamic = "force-dynamic";
@@ -26,12 +31,15 @@ export default async function ClientesPage({
   const ate = typeof sp.ate === "string" ? sp.ate : undefined;
   const page = typeof sp.page === "string" ? Number(sp.page) : 1;
 
-  const [{ clientes, total, pageSize }, stats] = await Promise.all([
+  const [{ clientes, total, pageSize }, stats, modelos, staff] = await Promise.all([
     listClientes({ q, de, ate, page }),
     getClientesStats({ de, ate }),
+    listModelosMensagem(),
+    getCurrentStaffUser(),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const baseParams = { q, de, ate };
+  const nomeAtendente = staff?.name ?? "Equipe";
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -77,6 +85,7 @@ export default async function ClientesPage({
         </form>
         <div className="hidden h-px flex-1 sm:block" />
         <div className="flex w-full items-center gap-3 sm:w-auto">
+          <NovoClienteDialog />
           <PeriodoDropdown q={q} de={de} ate={ate} />
           <ExportarDropdown q={q} de={de} ate={ate} />
         </div>
@@ -116,7 +125,9 @@ export default async function ClientesPage({
                 <span className="text-[var(--color-text-secondary)]">{new Date(c.createdAt).toLocaleDateString("pt-BR")}</span>
               </div>
 
-              <div className="flex items-center justify-end border-t border-white/5 pt-3">
+              <div className="flex items-center justify-end gap-2 border-t border-white/5 pt-3">
+                <EditarClienteButton cliente={c} />
+                <IniciarConversaButton telefone={c.telefone} nome={c.nome} modelos={modelos} nomeAtendente={nomeAtendente} />
                 <span className="flex h-[30px] items-center whitespace-nowrap rounded-[8px] border border-[var(--color-border-soft)] px-3 text-[12.5px] font-medium text-[var(--color-text-secondary)]">
                   Ver detalhes
                 </span>
@@ -131,14 +142,14 @@ export default async function ClientesPage({
         <TabelaRedimensionavel tableId="clientes">
           <div className="w-full overflow-hidden rounded-[26px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)]">
             <div className="flex w-full items-center border-b border-[var(--color-border)] px-[18px] py-[9px] text-[12px] font-medium text-[var(--color-text-muted)]">
-              <div className="flex flex-1 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
                 <Coluna id="nome" defaultWidth={260} header>Nome</Coluna>
                 <Coluna id="telefone" defaultWidth={150} header>Telefone</Coluna>
                 <Coluna id="cpf" defaultWidth={160} header>CPF</Coluna>
                 <Coluna id="email" defaultWidth={220} header>E-mail</Coluna>
                 <Coluna id="desde" defaultWidth={130} header>Cliente desde</Coluna>
               </div>
-              <p className="w-[130px] shrink-0 border-l border-white/10 pl-4">Ações</p>
+              <p className="w-[236px] shrink-0 border-l border-white/10 pl-4">Ações</p>
             </div>
 
             {clientes.length === 0 ? (
@@ -155,7 +166,7 @@ export default async function ClientesPage({
                   href={`/clientes/${c.id}`}
                   className="flex w-full items-center border-b border-white/5 px-[18px] py-3 text-[13px] last:border-0 hover:bg-white/[0.03]"
                 >
-                  <div className="flex flex-1 items-center gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
                     <Coluna id="nome" defaultWidth={260} className="truncate font-medium text-[var(--color-text-primary)]">
                       {c.nome}
                     </Coluna>
@@ -172,7 +183,9 @@ export default async function ClientesPage({
                       {new Date(c.createdAt).toLocaleDateString("pt-BR")}
                     </Coluna>
                   </div>
-                  <div className="flex w-[130px] shrink-0 items-center border-l border-white/10 pl-4">
+                  <div className="flex w-[236px] shrink-0 items-center gap-2 border-l border-white/10 pl-4">
+                    <EditarClienteButton cliente={c} />
+                    <IniciarConversaButton telefone={c.telefone} nome={c.nome} modelos={modelos} nomeAtendente={nomeAtendente} />
                     <span className="flex h-[30px] items-center whitespace-nowrap rounded-[8px] border border-[var(--color-border-soft)] px-3 text-[12.5px] font-medium text-[var(--color-text-secondary)]">
                       Ver detalhes
                     </span>
@@ -188,10 +201,12 @@ export default async function ClientesPage({
         <span>
           Mostrando {clientes.length} de {total}
         </span>
+        {totalPages > 1 && <span>Página {page} de {totalPages}</span>}
         <div className="flex gap-2">
           <Link
             href={buildHref(baseParams, { page: Math.max(1, page - 1) })}
             aria-disabled={page <= 1}
+            aria-label="Página anterior"
             className={`flex size-[26px] items-center justify-center rounded-[8px] border border-white/10 ${page <= 1 ? "pointer-events-none opacity-40" : "hover:border-white/20"}`}
           >
             <ChevronLeft size={14} />
@@ -199,6 +214,7 @@ export default async function ClientesPage({
           <Link
             href={buildHref(baseParams, { page: Math.min(totalPages, page + 1) })}
             aria-disabled={page >= totalPages}
+            aria-label="Próxima página"
             className={`flex size-[26px] items-center justify-center rounded-[8px] border border-white/10 ${page >= totalPages ? "pointer-events-none opacity-40" : "hover:border-white/20"}`}
           >
             <ChevronRight size={14} />

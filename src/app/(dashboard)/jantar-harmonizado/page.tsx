@@ -4,6 +4,8 @@ import { SectionCard } from "@/components/ui/section-card";
 import { EditarEdicaoDialog } from "@/components/jantar-harmonizado/editar-edicao-dialog";
 import { ListaPreReservas } from "@/components/jantar-harmonizado/lista-pre-reservas";
 import { HistoricoEdicaoDialog } from "@/components/jantar-harmonizado/historico-edicao-dialog";
+import { NovaReservaJHDialog } from "@/components/jantar-harmonizado/nova-reserva-jh-dialog";
+import { CardapioJHDialog } from "@/components/jantar-harmonizado/cardapio-jh-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +55,10 @@ export default async function JantarHarmonizadoPage() {
             <div className="flex flex-wrap gap-x-10 gap-y-3">
               <div>
                 <p className="text-[12px] text-[var(--color-text-muted)]">Data</p>
-                <p className="font-display text-[16px] text-[var(--color-text-primary)]">{formatData(edicao.dataEvento)}</p>
+                <p className="font-display text-[16px] text-[var(--color-text-primary)]">
+                  {formatData(edicao.dataEvento)}
+                  {edicao.horaEvento && <span className="text-[var(--color-text-secondary)]"> às {edicao.horaEvento}</span>}
+                </p>
               </div>
               <div>
                 <p className="text-[12px] text-[var(--color-text-muted)]">Valor por pessoa</p>
@@ -69,6 +74,17 @@ export default async function JantarHarmonizadoPage() {
                 <p className="text-[12px] text-[var(--color-text-muted)]">Pré-reservas pendentes</p>
                 <p className="font-display text-[16px] text-[var(--color-text-primary)]">{pendentes.length}</p>
               </div>
+              <div>
+                <p className="text-[12px] text-[var(--color-text-muted)]">Menu</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-display text-[16px] text-[var(--color-text-primary)]">
+                    {edicao.cardapioEtapas.length > 0 || edicao.cardapioIntro || edicao.regrasReserva
+                      ? "Informações preenchidas"
+                      : "Informações não preenchidas"}
+                  </p>
+                  <CardapioJHDialog edicao={edicao} />
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto">
@@ -78,7 +94,7 @@ export default async function JantarHarmonizadoPage() {
         </div>
       )}
 
-      <SectionCard icon={Wine} title="Reservas" className="w-full">
+      <SectionCard icon={Wine} title="Reservas" className="w-full" headerExtra={<NovaReservaJHDialog edicao={edicao} />}>
         <div className="flex items-center gap-2 px-[18px] pt-2">
           <span className="text-[11px] font-semibold tracking-[0.5px] text-[var(--color-text-muted)] uppercase">Pendentes</span>
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[999px] bg-white/[0.06] px-[6px] text-[10.5px] font-semibold text-[var(--color-text-secondary)]">
@@ -90,6 +106,7 @@ export default async function JantarHarmonizadoPage() {
           itens={pendentes}
           vazio="Nenhuma pré-reserva registrada ainda."
           mostrarConfirmar
+          valorPessoa={edicao?.valorPessoa ?? 0}
         />
 
         <div className="mt-2 flex items-center gap-2 border-t border-white/5 px-[18px] pt-4">
@@ -103,6 +120,7 @@ export default async function JantarHarmonizadoPage() {
           itens={confirmadas}
           vazio="Nenhuma reserva confirmada por comprovante ainda."
           mostrarConfirmar={false}
+          valorPessoa={edicao?.valorPessoa ?? 0}
         />
       </SectionCard>
 

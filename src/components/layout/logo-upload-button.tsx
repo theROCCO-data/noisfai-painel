@@ -6,7 +6,7 @@ import { Pencil, RefreshCw } from "lucide-react";
 import { atualizarLogo } from "@/lib/data/configuracoes-actions";
 import { ImagemCropDialog } from "@/components/ui/imagem-crop-dialog";
 
-export function LogoUploadButton({ logoUrl }: { logoUrl: string | null }) {
+export function LogoUploadButton({ logoUrl, size = 30, glow = true }: { logoUrl: string | null; size?: number; glow?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<string | null>(logoUrl);
@@ -63,15 +63,25 @@ export function LogoUploadButton({ logoUrl }: { logoUrl: string | null }) {
       <button
         type="button"
         title="Clique para editar a logo"
+        aria-label="Clique para editar a logo"
         onClick={abrirMenuOuArquivo}
         disabled={pending}
-        className="relative flex size-[30px] shrink-0 items-center justify-center overflow-hidden rounded-[13px] shadow-[0px_10px_24px_-8px_rgba(168,85,247,0.6)] disabled:opacity-60"
-        style={!preview ? { backgroundImage: "linear-gradient(135deg, #a855f7 14.286%, #7c3aed 85.714%)" } : undefined}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size * 0.43,
+          ...(!preview ? { backgroundImage: "linear-gradient(135deg, #a855f7 14.286%, #7c3aed 85.714%)" } : {}),
+        }}
+        className={`relative flex shrink-0 items-center justify-center overflow-hidden disabled:opacity-60 ${
+          glow ? "shadow-[0px_10px_24px_-8px_rgba(168,85,247,0.6)]" : ""
+        }`}
       >
         {preview ? (
-          <Image src={preview} alt="Logo" fill sizes="30px" className="object-cover" unoptimized />
+          <Image src={preview} alt="Logo" fill sizes={`${size}px`} className="object-cover" unoptimized />
         ) : (
-          <span className="font-display text-[14.5px] font-semibold text-white">N</span>
+          <span className="font-display font-semibold text-white" style={{ fontSize: size * 0.48 }}>
+            N
+          </span>
         )}
       </button>
       <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />

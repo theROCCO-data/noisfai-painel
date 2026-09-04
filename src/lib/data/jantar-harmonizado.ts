@@ -1,6 +1,12 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export type EtapaCardapioJH = {
+  titulo: string;
+  vinho: string;
+  prato: string;
+};
+
 export type EdicaoJH = {
   id: number;
   nome: string;
@@ -11,6 +17,11 @@ export type EdicaoJH = {
   imagemUrl: string | null;
   cotaVagas: number | null;
   vagasDisponiveis: number | null;
+  horaEvento: string | null;
+  cardapioIntro: string | null;
+  cardapioPalestrante: string | null;
+  cardapioEtapas: EtapaCardapioJH[];
+  regrasReserva: string | null;
 };
 
 function tituloPadrao(dataEvento: string) {
@@ -24,7 +35,9 @@ export async function getEdicaoJH(): Promise<EdicaoJH | null> {
 
   const { data: evento, error } = await supabase
     .from("eventos_especiais")
-    .select("id, nome, titulo, valor_pessoa, data_evento, ativo, imagem_url")
+    .select(
+      "id, nome, titulo, valor_pessoa, data_evento, ativo, imagem_url, hora_evento, cardapio_intro, cardapio_palestrante, cardapio_etapas, regras_reserva"
+    )
     .eq("nome", "Jantar Harmonizado")
     .maybeSingle();
 
@@ -48,12 +61,20 @@ export async function getEdicaoJH(): Promise<EdicaoJH | null> {
     imagemUrl: evento.imagem_url,
     cotaVagas: capacidade?.capacidade_bot ?? null,
     vagasDisponiveis: capacidade?.disponivel_atual ?? null,
+    horaEvento: evento.hora_evento ? String(evento.hora_evento).slice(0, 5) : null,
+    cardapioIntro: evento.cardapio_intro,
+    cardapioPalestrante: evento.cardapio_palestrante,
+    cardapioEtapas: Array.isArray(evento.cardapio_etapas) ? evento.cardapio_etapas : [],
+    regrasReserva: evento.regras_reserva,
   };
 }
 
 export type PreReservaJH = {
   id: number;
   nome: string;
+  telefone: string;
+  cpf: string | null;
+  email: string | null;
   pessoas: number;
   data: string;
   statusPagamento: string;
@@ -66,7 +87,7 @@ export async function getPreReservasJH(): Promise<PreReservaJH[]> {
 
   const { data, error } = await supabase
     .from("reservas")
-    .select("id, nome, pessoas, data, status_pagamento, comprovante_url, canal")
+    .select("id, nome, telefone, cpf, email, pessoas, data, status_pagamento, comprovante_url, canal")
     .ilike("objetivo", "%harmonizado%")
     .neq("status", "cancelado")
     .order("created_at", { ascending: false });
@@ -76,6 +97,9 @@ export async function getPreReservasJH(): Promise<PreReservaJH[]> {
   return (data ?? []).map((r) => ({
     id: r.id,
     nome: r.nome,
+    telefone: r.telefone ?? "",
+    cpf: r.cpf,
+    email: r.email,
     pessoas: r.pessoas,
     data: r.data,
     statusPagamento: r.status_pagamento ?? "pendente",

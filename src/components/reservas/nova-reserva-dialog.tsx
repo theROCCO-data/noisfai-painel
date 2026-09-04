@@ -3,9 +3,13 @@
 import { useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 import { criarReservaManual } from "@/lib/data/reservas-actions";
+import { toast } from "@/lib/toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MaskedTimeInput } from "@/components/ui/masked-time-input";
+import { MaskedCpfInput } from "@/components/ui/masked-cpf-input";
+import { MaskedPhoneInput } from "@/components/ui/masked-phone-input";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function NovaReservaDialog({ atendentes }: { atendentes: { id: string; nome: string }[] }) {
   const [open, setOpen] = useState(false);
@@ -36,11 +40,14 @@ export function NovaReservaDialog({ atendentes }: { atendentes: { id: string; no
       });
       if (result.ok) {
         setOpen(false);
+        toast("Reserva criada.");
       } else {
         setError(result.error);
       }
     });
   }
+
+  useEscapeClose(open, () => setOpen(false));
 
   return (
     <>
@@ -62,7 +69,7 @@ export function NovaReservaDialog({ atendentes }: { atendentes: { id: string; no
               <h2 className="font-display text-[17px] font-semibold text-[var(--color-text-primary)]">
                 Nova reserva
               </h2>
-              <button onClick={() => setOpen(false)} className="text-[var(--color-text-muted)]">
+              <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>
@@ -73,10 +80,10 @@ export function NovaReservaDialog({ atendentes }: { atendentes: { id: string; no
               </Field>
               <div className="flex gap-3">
                 <Field label="Telefone" className="flex-1">
-                  <input name="telefone" required placeholder="55219..." className="dialog-input" />
+                  <MaskedPhoneInput name="telefone" required />
                 </Field>
                 <Field label="CPF" className="flex-1">
-                  <input name="cpf" placeholder="000.000.000-00" className="dialog-input" />
+                  <MaskedCpfInput name="cpf" />
                 </Field>
               </div>
               <Field label="E-mail (opcional)">
@@ -129,12 +136,7 @@ export function NovaReservaDialog({ atendentes }: { atendentes: { id: string; no
                 <input name="objetivo" placeholder="Aniversário, jantar de negócios..." className="dialog-input" />
               </Field>
               <Field label="Observação (opcional)">
-                <textarea
-                  name="observacao"
-                  placeholder="Alergias, preferências, pedidos especiais..."
-                  rows={3}
-                  className="dialog-input h-auto resize-y py-2"
-                />
+                <input name="observacao" placeholder="Alergias, preferências, pedidos especiais..." className="dialog-input" />
               </Field>
 
               {error && <p className="text-[12.5px] text-[var(--color-status-red)]">{error}</p>}

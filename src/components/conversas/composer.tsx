@@ -4,15 +4,21 @@ import { useState, useTransition } from "react";
 import { Send, Bot } from "lucide-react";
 import { enviarMensagem } from "@/lib/data/status-humano-actions";
 import type { StatusAtendimento } from "@/lib/data/status-humano";
+import { ModelosMensagemPopover } from "@/components/conversas/modelos-mensagem-popover";
+import type { ModeloMensagem } from "@/lib/data/modelos-mensagem";
 
 export function Composer({
   telefone,
   conversationId,
   status,
+  modelos,
+  nomeAtendente,
 }: {
   telefone: string;
   conversationId: string;
   status: StatusAtendimento;
+  modelos: ModeloMensagem[];
+  nomeAtendente: string;
 }) {
   const [texto, setTexto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +52,8 @@ export function Composer({
   return (
     <div className="flex w-full shrink-0 flex-col gap-1.5 border-t border-[var(--color-border)] px-[22px] py-4">
       <div className="flex w-full items-center gap-[10px]">
-        <div className="flex h-[38px] flex-1 items-center rounded-[16px] border border-[var(--color-border-soft)] bg-white/[0.04] px-5">
+        <div className="flex h-[38px] flex-1 items-center gap-2 rounded-[16px] border border-[var(--color-border-soft)] bg-white/[0.04] pl-3 pr-5">
+          <ModelosMensagemPopover modelos={modelos} nomeAtendente={nomeAtendente} onSelecionar={setTexto} />
           <input
             value={texto}
             onChange={(e) => setTexto(e.target.value)}

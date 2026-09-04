@@ -14,6 +14,13 @@ const ORIGEM_CORES: Record<string, string> = {
   telefone: "#87809f",
   "não informado": "#87809f",
 };
+const ORIGEM_LABELS: Record<string, string> = {
+  bot: "Chatbot (IA)",
+  painel: "Equipe (pelo Painel)",
+  gerente: "Gerente",
+  telefone: "Telefone",
+  "não informado": "Não informado",
+};
 
 const CANAL_CORES: Record<string, string> = {
   online: "#a855f7",
@@ -56,15 +63,34 @@ export default async function AnalisesPage({
       </header>
 
       <section className="flex w-full flex-wrap gap-[14px]">
-        <KpiCard icon={TrendingUp} label="RESERVAS CONFIRMADAS" value={dados.reservasConfirmadas} hint="via qualquer origem" />
+        <KpiCard
+          icon={TrendingUp}
+          label="RESERVAS CONFIRMADAS"
+          value={dados.reservasConfirmadas}
+          hint="via qualquer origem"
+          info="Total de reservas com status confirmado no período, sejam feitas pelo bot, pelo Painel ou por telefone."
+        />
         <KpiCard
           icon={LineChart}
           label="TAXA DE CONVERSÃO DO BOT"
           value={`${dados.taxaConversao.toFixed(1)}%`}
           hint="reservas / conversas iniciadas"
+          info="Percentual de conversas iniciadas com o bot que terminaram em reserva confirmada — mede quão bem o chatbot converte quem chega."
         />
-        <KpiCard icon={Users} label="CONVERSAS INICIADAS (LEADS)" value={dados.conversasIniciadas} hint="no período" />
-        <KpiCard icon={UserPlus} label="NOVOS CLIENTES CAPTADOS" value={dados.novosClientes} hint="cadastros novos" />
+        <KpiCard
+          icon={Users}
+          label="CONVERSAS INICIADAS (LEADS)"
+          value={dados.conversasIniciadas}
+          hint="no período"
+          info="Quantidade de conversas novas que começaram no WhatsApp dentro do período filtrado — cada uma é um lead em potencial."
+        />
+        <KpiCard
+          icon={UserPlus}
+          label="NOVOS CLIENTES CAPTADOS"
+          value={dados.novosClientes}
+          hint="cadastros novos"
+          info="Clientes que entraram no cadastro pela primeira vez no período — seja por reserva, atendimento humano ou cadastro manual."
+        />
         <KpiCard
           icon={Target}
           label="LEADS CONVERTIDOS EM RESERVA"
@@ -72,10 +98,16 @@ export default async function AnalisesPage({
           valueSuffix={`(${dados.taxaLeadsConvertidos.toFixed(0)}%)`}
           hint="conversas que viraram reserva"
           highlighted
+          info="Quantas das conversas iniciadas no período realmente viraram uma reserva confirmada, e qual fração isso representa."
         />
       </section>
 
-      <SectionCard icon={LineChart} title="Reservas ao longo do tempo" className="w-full">
+      <SectionCard
+        icon={LineChart}
+        title="Reservas ao longo do tempo"
+        className="w-full"
+        info="Quantidade de reservas confirmadas por dia dentro do período filtrado — mostra picos e vales de movimento."
+      >
         <div className="flex h-[180px] w-full items-end gap-[3px] px-[18px] py-4">
           {dados.serieTemporal.map((d) => (
             <div key={d.data} className="group flex h-full flex-1 flex-col items-center justify-end gap-1">
@@ -101,7 +133,12 @@ export default async function AnalisesPage({
       </SectionCard>
 
       <section className="flex w-full flex-wrap gap-4">
-        <SectionCard icon={GitBranch} title="Funil do Chatbot" className="min-w-[320px] flex-1">
+        <SectionCard
+          icon={GitBranch}
+          title="Funil do Chatbot"
+          className="min-w-[320px] flex-1"
+          info="As 3 etapas de quem fala com o bot: primeiro inicia a conversa, depois vira lead convertido, e por fim confirma a reserva. Cada barra mostra quantos chegaram até ali."
+        >
           <div className="flex flex-col gap-4 px-[18px] py-4">
             <FunnelBar label="Conversas iniciadas" value={dados.conversasIniciadas} max={Math.max(1, dados.conversasIniciadas)} />
             <FunnelBar label="Leads convertidos em reserva" value={dados.leadsConvertidos} max={Math.max(1, dados.conversasIniciadas)} />
@@ -109,7 +146,12 @@ export default async function AnalisesPage({
           </div>
         </SectionCard>
 
-        <SectionCard icon={PieChart} title="Canal da reserva" className="min-w-[280px] flex-1">
+        <SectionCard
+          icon={PieChart}
+          title="Canal da reserva"
+          className="min-w-[280px] flex-1"
+          info="Se a reserva veio pelo WhatsApp (Online) ou foi feita presencialmente/por telefone no balcão (Presencial)."
+        >
           <div className="flex flex-col gap-2 px-[18px] py-4">
             {dados.canalReservas.length === 0 ? (
               <p className="text-[13px] text-[var(--color-text-muted)]">Sem reservas no período pra calcular canal.</p>
@@ -138,7 +180,12 @@ export default async function AnalisesPage({
           </div>
         </SectionCard>
 
-        <SectionCard icon={PieChart} title="Origem da alteração" className="min-w-[280px] flex-1">
+        <SectionCard
+          icon={PieChart}
+          title="Origem da alteração"
+          className="min-w-[280px] flex-1"
+          info="Quem fez a última alteração em cada reserva: o Chatbot (IA) sozinho, ou a equipe manualmente pelo Painel."
+        >
           <div className="flex flex-col gap-2 px-[18px] py-4">
             {dados.origemReservas.length === 0 ? (
               <p className="text-[13px] text-[var(--color-text-muted)]">Sem reservas no período pra calcular origem.</p>
@@ -151,7 +198,7 @@ export default async function AnalisesPage({
                     <div className="flex items-center justify-between text-[13px]">
                       <span className="flex items-center gap-2 text-[var(--color-text-primary)]">
                         <span className="size-2 rounded-full" style={{ backgroundColor: cor }} />
-                        {o.origem}
+                        {ORIGEM_LABELS[o.origem] ?? o.origem}
                       </span>
                       <span className="text-[var(--color-text-secondary)]">
                         {o.total} ({pct.toFixed(0)}%)
@@ -169,7 +216,12 @@ export default async function AnalisesPage({
       </section>
 
       <section className="flex w-full flex-wrap gap-4">
-        <SectionCard icon={User} title="Performance de reservas por responsável" className="min-w-[280px] flex-[2]">
+        <SectionCard
+          icon={User}
+          title="Performance de reservas por responsável"
+          className="min-w-[280px] flex-[2]"
+          info="Quantas reservas cada atendente (ou o Chatbot IA) fechou no período — ajuda a ver quem está puxando mais volume."
+        >
           <div className="flex flex-col gap-4 px-[18px] py-4">
             {dados.performancePorResponsavel.length === 0 ? (
               <p className="text-[13px] text-[var(--color-text-muted)]">Sem reservas no período.</p>
@@ -182,8 +234,20 @@ export default async function AnalisesPage({
         </SectionCard>
 
         <div className="flex min-w-[220px] flex-1 flex-col gap-4">
-          <KpiCard icon={UserCheck} label="LEADS QUE COMPARECERAM" value={dados.compareceram} hint="marcado como comparecimento" />
-          <KpiCard icon={UserX} label="LEADS QUE NÃO COMPARECERAM" value={dados.naoCompareceram} hint="marcado como não comparecimento" />
+          <KpiCard
+            icon={UserCheck}
+            label="LEADS QUE COMPARECERAM"
+            value={dados.compareceram}
+            hint="marcado como comparecimento"
+            info="Reservas que a equipe marcou como 'Compareceu' na tela de Reservas — mostra quantos clientes realmente vieram."
+          />
+          <KpiCard
+            icon={UserX}
+            label="LEADS QUE NÃO COMPARECERAM"
+            value={dados.naoCompareceram}
+            hint="marcado como não comparecimento"
+            info="Reservas que a equipe marcou como 'Não compareceu' — clientes que reservaram mas não vieram, sem cancelar antes."
+          />
         </div>
       </section>
 

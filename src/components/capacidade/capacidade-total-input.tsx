@@ -3,17 +3,19 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Pencil, X } from "lucide-react";
 import { atualizarCapacidadeTotal, atualizarCapacidadeTotalEmLote } from "@/lib/data/capacidade-actions";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function CapacidadeTotalInput({
   id,
   valorInicial,
   data,
-  todosIds,
+  todosDias,
 }: {
   id: number;
   valorInicial: number;
   data: string;
-  todosIds: number[];
+  /** id+data de todos os dias listados na tela — usado só pra calcular quais são "esse dia em diante". */
+  todosDias: { id: number; data: string }[];
 }) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(valorInicial);
@@ -22,7 +24,11 @@ export function CapacidadeTotalInput({
   const [pending, startTransition] = useTransition();
   const valorAnterior = useRef(valorInicial);
 
-  const outrosDias = todosIds.length - 1;
+  // lote nunca alcança dias que já passaram em relação a este — só daqui pra
+  // frente, senão editar a capacidade de hoje reescreveria dias antigos que
+  // já refletiram reservas reais.
+  const idsParaFrente = todosDias.filter((d) => d.data >= data).map((d) => d.id);
+  const outrosDias = idsParaFrente.length - 1;
   const dataFormatada = new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
 
   // ressincroniza com o valor vindo do servidor (ex: uma edição em lote
@@ -30,6 +36,7 @@ export function CapacidadeTotalInput({
   // não está em edição/confirmação, pra não atropelar o usuário no meio de uma ação
   useEffect(() => {
     if (!editando && !confirmando) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- ressincroniza com o servidor quando o valor externo muda (ver comentário acima)
       setValor(valorInicial);
       valorAnterior.current = valorInicial;
     }
@@ -62,7 +69,7 @@ export function CapacidadeTotalInput({
     setConfirmando(false);
     startTransition(async () => {
       const result = emLote
-        ? await atualizarCapacidadeTotalEmLote(todosIds, novoValor)
+        ? await atualizarCapacidadeTotalEmLote(idsParaFrente, novoValor, data)
         : await atualizarCapacidadeTotal(id, novoValor);
       if (!result.ok) {
         alert(`Não deu pra salvar: ${result.error}`);
@@ -72,6 +79,8 @@ export function CapacidadeTotalInput({
       }
     });
   }
+
+  useEscapeClose(confirmando, cancelarConfirmacao);
 
   return (
     <>
@@ -92,6 +101,7 @@ export function CapacidadeTotalInput({
           type="button"
           onClick={abrirEdicao}
           title="Alterar capacidade total do dia"
+          aria-label={`Alterar capacidade total do dia (atual: ${valor})`}
           disabled={pending}
           className="flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50"
         >
@@ -108,15 +118,16 @@ export function CapacidadeTotalInput({
           >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-[16px] font-semibold text-[var(--color-text-primary)]">Alterar capacidade total</h2>
-              <button onClick={cancelarConfirmacao} className="text-[var(--color-text-muted)]">
+              <button onClick={cancelarConfirmacao} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>
 
             <p className="text-[13.5px] leading-[1.7] text-[var(--color-text-secondary)]">
               Mudar a capacidade de <span className="font-semibold text-[var(--color-text-primary)]">{dataFormatada}</span> pra{" "}
-              <span className="font-semibold text-[var(--color-text-primary)]">{valor}</span>. Aplicar só nesse dia, ou nos outros{" "}
-              {outrosDias} dias listados também?
+              <span className="font-semibold text-[var(--color-text-primary)]">{valor}</span>. Aplicar só nesse dia, ou de{" "}
+              {dataFormatada} em diante ({outrosDias} outro{outrosDias === 1 ? "" : "s"} dia{outrosDias === 1 ? "" : "s"})? Dias
+              anteriores a esse nunca são alterados.
             </p>
 
             <div className="flex flex-col gap-2.5">
@@ -127,7 +138,7 @@ export function CapacidadeTotalInput({
                 className="h-9 rounded-[999px] px-5 text-[13px] font-semibold text-white disabled:opacity-60"
                 style={{ backgroundImage: "linear-gradient(163deg, #a855f7 14%, #6d28d9 86%)" }}
               >
-                {pending ? "Aplicando..." : `Aplicar a todos os ${todosIds.length} dias listados`}
+                {pending ? "Aplicando..." : `Aplicar de ${dataFormatada} em diante (${idsParaFrente.length} dias)`}
               </button>
               <button
                 type="button"

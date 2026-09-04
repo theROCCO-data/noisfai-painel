@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { XCircle, X } from "lucide-react";
 import { cancelarReserva } from "@/lib/data/reservas-actions";
+import { toast } from "@/lib/toast";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function CancelarReservaButton({ reservaId, nome }: { reservaId: number; nome: string }) {
   const [open, setOpen] = useState(false);
@@ -20,16 +22,23 @@ export function CancelarReservaButton({ reservaId, nome }: { reservaId: number; 
     setError(null);
     startTransition(async () => {
       const result = await cancelarReserva(reservaId, motivo);
-      if (result.ok) fechar();
-      else setError(result.error);
+      if (result.ok) {
+        fechar();
+        toast("Reserva cancelada.");
+      } else {
+        setError(result.error);
+      }
     });
   }
+
+  useEscapeClose(open, fechar);
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
         title="Cancelar reserva"
+        aria-label="Cancelar reserva"
         className="flex size-[26px] items-center justify-center rounded-[8px] border border-white/10 text-[var(--color-text-muted)] hover:border-[var(--color-status-red)] hover:text-[var(--color-status-red)]"
       >
         <XCircle size={14} />
@@ -43,7 +52,7 @@ export function CancelarReservaButton({ reservaId, nome }: { reservaId: number; 
           >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-[16px] font-semibold text-[var(--color-text-primary)]">Cancelar reserva</h2>
-              <button onClick={fechar} className="text-[var(--color-text-muted)]">
+              <button onClick={fechar} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>
@@ -55,12 +64,11 @@ export function CancelarReservaButton({ reservaId, nome }: { reservaId: number; 
 
             <label className="flex flex-col gap-2.5">
               <span className="text-[12px] text-[var(--color-text-muted)]">Motivo do cancelamento (opcional)</span>
-              <textarea
+              <input
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
                 placeholder="Cliente desmarcou, imprevisto do restaurante..."
-                rows={3}
-                className="dialog-input h-auto resize-y px-3.5 py-3 leading-[1.6]"
+                className="dialog-input"
               />
             </label>
 

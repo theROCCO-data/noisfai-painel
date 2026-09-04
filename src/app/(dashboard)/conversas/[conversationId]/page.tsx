@@ -4,6 +4,8 @@ import { ArrowLeft, UserRound, AlertCircle } from "lucide-react";
 import { getConversa } from "@/lib/data/conversas";
 import { formatTelefoneBR } from "@/lib/format";
 import { getStatusHumano } from "@/lib/data/status-humano";
+import { listModelosMensagem } from "@/lib/data/modelos-mensagem";
+import { getCurrentStaffUser } from "@/lib/auth";
 import { ToggleAtendimentoHumano } from "@/components/conversas/toggle-atendimento-humano";
 import { Composer } from "@/components/conversas/composer";
 import { PerfilContatoDialog } from "@/components/conversas/perfil-contato-dialog";
@@ -20,7 +22,11 @@ export default async function ConversaPage({
 
   if (!conversa) notFound();
 
-  const status = await getStatusHumano(conversa.phone);
+  const [status, modelos, staff] = await Promise.all([
+    getStatusHumano(conversa.phone),
+    listModelosMensagem(),
+    getCurrentStaffUser(),
+  ]);
   const label = formatTelefoneBR(conversa.phone);
 
   return (
@@ -70,7 +76,13 @@ export default async function ConversaPage({
 
       <ListaMensagens mensagens={conversa.mensagens} />
 
-      <Composer telefone={conversa.phone} conversationId={conversa.conversationId} status={status} />
+      <Composer
+        telefone={conversa.phone}
+        conversationId={conversa.conversationId}
+        status={status}
+        modelos={modelos}
+        nomeAtendente={staff?.name ?? "Equipe"}
+      />
     </>
   );
 }

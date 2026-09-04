@@ -8,6 +8,7 @@ export type ItemCardapio = {
   nome: string;
   descricao: string | null;
   preco: number;
+  precoIfood: number | null;
   disponivelPresencial: boolean;
   disponivelIfood: boolean;
 };
@@ -17,7 +18,7 @@ export async function listCardapio(q?: string): Promise<{ existe: boolean; itens
 
   let query = supabase
     .from("cardapio_itens")
-    .select("id, codigo, categoria, nome, descricao, preco, disponivel_presencial, disponivel_ifood")
+    .select("id, codigo, categoria, nome, descricao, preco, preco_ifood, disponivel_presencial, disponivel_ifood")
     .order("categoria", { ascending: true })
     .order("nome", { ascending: true });
 
@@ -39,6 +40,7 @@ export async function listCardapio(q?: string): Promise<{ existe: boolean; itens
       nome: i.nome,
       descricao: i.descricao,
       preco: Number(i.preco),
+      precoIfood: i.preco_ifood === null ? null : Number(i.preco_ifood),
       disponivelPresencial: i.disponivel_presencial,
       disponivelIfood: i.disponivel_ifood,
     })),

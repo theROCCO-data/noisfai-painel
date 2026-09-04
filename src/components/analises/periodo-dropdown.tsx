@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronDown } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 function hojeISO() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -40,6 +41,9 @@ export function PeriodoDropdown({ label, de, ate }: { label: string; de: string;
     setOpen(false);
     setCustomOpen(false);
   }
+
+  useEscapeClose(open, () => setOpen(false));
+  useEscapeClose(customOpen, () => setCustomOpen(false));
 
   return (
     <div className="relative w-full sm:w-auto">

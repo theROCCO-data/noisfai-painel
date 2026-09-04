@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { listReservasEdicaoJH, type ReservaEdicaoJH } from "@/lib/data/jantar-harmonizado-actions";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 import type { EdicaoHistoricoJH } from "@/lib/data/jantar-harmonizado";
 
 function formatBRL(v: number) {
@@ -28,6 +29,8 @@ export function HistoricoEdicaoDialog({ edicao, children }: { edicao: EdicaoHist
     }
   }
 
+  useEscapeClose(open, () => setOpen(false));
+
   return (
     <>
       <button type="button" onClick={abrir} className="w-full text-left">
@@ -49,7 +52,7 @@ export function HistoricoEdicaoDialog({ edicao, children }: { edicao: EdicaoHist
                   {formatData(edicao.dataEvento)} · {formatBRL(edicao.valorPessoa)} por pessoa
                 </p>
               </div>
-              <button onClick={() => setOpen(false)} className="shrink-0 text-[var(--color-text-muted)]">
+              <button onClick={() => setOpen(false)} aria-label="Fechar" className="shrink-0 text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>

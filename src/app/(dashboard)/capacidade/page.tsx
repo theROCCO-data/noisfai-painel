@@ -13,14 +13,26 @@ function formatCurto(iso: string) {
   return `${d}/${m}`;
 }
 
+function esteMes() {
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toLocaleDateString("en-CA");
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toLocaleDateString("en-CA");
+  return { de: inicio, ate: fim };
+}
+
 export default async function CapacidadePage({ searchParams }: PageProps<"/capacidade">) {
   const sp = await searchParams;
-  const de = typeof sp.de === "string" ? sp.de : undefined;
-  const ate = typeof sp.ate === "string" ? sp.ate : undefined;
+  // sem período na URL: cai no mês corrente por padrão, não em "todos os
+  // dias cadastrados" (que crescia sem fim e não era o filtro mais útil no
+  // dia a dia).
+  const semFiltro = typeof sp.de !== "string" && typeof sp.ate !== "string";
+  const padrao = semFiltro ? esteMes() : { de: undefined, ate: undefined };
+  const de = typeof sp.de === "string" ? sp.de : padrao.de;
+  const ate = typeof sp.ate === "string" ? sp.ate : padrao.ate;
   const dias = await listCapacidadeDias(de, ate);
 
-  const rotuloPeriodo = de && ate ? `${formatCurto(de)} – ${formatCurto(ate)}` : "Todos os dias cadastrados";
-  const todosIds = dias.map((d) => d.id);
+  const rotuloPeriodo = semFiltro ? "Este mês" : de && ate ? `${formatCurto(de)} – ${formatCurto(ate)}` : "Todos os dias cadastrados";
+  const todosDias = dias.map((d) => ({ id: d.id, data: d.data }));
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -69,7 +81,7 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
                   <div className="flex items-center justify-between text-[var(--color-text-muted)]">
                     <span>Vagas consumidas</span>
                     <span className="flex items-center gap-1 text-[var(--color-text-secondary)]">
-                      {d.reservado} de <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} data={d.data} todosIds={todosIds} />
+                      {d.reservado} de <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} data={d.data} todosDias={todosDias} />
                     </span>
                   </div>
                   <div className="h-[5px] w-full overflow-hidden rounded-full bg-white/10">
@@ -126,7 +138,7 @@ export default async function CapacidadePage({ searchParams }: PageProps<"/capac
                       {diaSemana}
                     </Coluna>
                     <Coluna id="capacidade" defaultWidth={120}>
-                      <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} data={d.data} todosIds={todosIds} />
+                      <CapacidadeTotalInput id={d.id} valorInicial={d.capacidadeBot} data={d.data} todosDias={todosDias} />
                     </Coluna>
                     <Coluna id="consumidas" defaultWidth={320} className="flex items-center gap-3">
                       <span className="w-6 shrink-0 text-[var(--color-text-secondary)]">{d.reservado}</span>

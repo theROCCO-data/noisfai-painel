@@ -5,6 +5,7 @@ import { ConvidarUsuarioDialog } from "@/components/configuracoes/convidar-usuar
 import { SairButton } from "@/components/configuracoes/sair-button";
 import { TabelaRedimensionavel, Coluna } from "@/components/ui/tabela-redimensionavel";
 import { RemoverUsuarioButton } from "@/components/configuracoes/remover-usuario-button";
+import { AlternarAcessoButton } from "@/components/configuracoes/alternar-acesso-button";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,10 @@ export default async function ConfiguracoesPage() {
                   <p className="truncate text-[12.5px] text-[var(--color-text-secondary)]">{u.email}</p>
                 </div>
                 {podeRemover && u.id !== user?.id && (
-                  <RemoverUsuarioButton id={u.id} nome={u.nome} />
+                  <div className="flex shrink-0 items-center gap-1">
+                    <AlternarAcessoButton id={u.id} nome={u.nome} ativo={u.ativo} />
+                    <RemoverUsuarioButton id={u.id} nome={u.nome} />
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -60,7 +64,7 @@ export default async function ConfiguracoesPage() {
                     className={`size-[6px] rounded-full ${u.ativo ? "bg-[var(--color-status-green)]" : "bg-[var(--color-status-amber)]"}`}
                   />
                   <span className={u.ativo ? "text-[var(--color-status-green)]" : "text-[var(--color-status-amber)]"}>
-                    {u.ativo ? "Ativo" : "Pendente"}
+                    {u.ativo ? "Ativo" : "Desativado"}
                   </span>
                 </span>
               </div>
@@ -77,7 +81,7 @@ export default async function ConfiguracoesPage() {
               <Coluna id="cargo" defaultWidth={110} header>Cargo</Coluna>
               <Coluna id="status" defaultWidth={90} header>Status</Coluna>
               {podeRemover && (
-                <p className="w-[70px] shrink-0 border-l border-white/10 pl-4">Ações</p>
+                <p className="w-[100px] shrink-0 border-l border-white/10 pl-4">Ações</p>
               )}
             </div>
             {usuarios.map((u) => (
@@ -98,12 +102,17 @@ export default async function ConfiguracoesPage() {
                     className={`size-[6px] rounded-full ${u.ativo ? "bg-[var(--color-status-green)]" : "bg-[var(--color-status-amber)]"}`}
                   />
                   <span className={u.ativo ? "text-[var(--color-status-green)]" : "text-[var(--color-status-amber)]"}>
-                    {u.ativo ? "Ativo" : "Pendente"}
+                    {u.ativo ? "Ativo" : "Desativado"}
                   </span>
                 </Coluna>
                 {podeRemover && (
-                  <div className="flex w-[70px] shrink-0 items-center border-l border-white/10 pl-4">
-                    {u.id !== user?.id && <RemoverUsuarioButton id={u.id} nome={u.nome} />}
+                  <div className="flex w-[100px] shrink-0 items-center gap-1 border-l border-white/10 pl-4">
+                    {u.id !== user?.id && (
+                      <>
+                        <AlternarAcessoButton id={u.id} nome={u.nome} ativo={u.ativo} />
+                        <RemoverUsuarioButton id={u.id} nome={u.nome} />
+                      </>
+                    )}
                   </div>
                 )}
               </div>

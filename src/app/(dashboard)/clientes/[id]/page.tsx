@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Phone, Mail, IdCard, CalendarCheck, Wine } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, IdCard, CalendarCheck, Wine, PartyPopper } from "lucide-react";
 import { getClienteDetalhe } from "@/lib/data/clientes";
+import { listEventosPorCliente } from "@/lib/data/eventos";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { EditarClienteDialog } from "@/components/clientes/editar-cliente-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,7 @@ export default async function ClienteDetalhePage({
   const clienteId = Number(id);
   if (!Number.isFinite(clienteId)) notFound();
 
-  const cliente = await getClienteDetalhe(clienteId);
+  const [cliente, eventos] = await Promise.all([getClienteDetalhe(clienteId), listEventosPorCliente(clienteId)]);
   if (!cliente) notFound();
 
   const reservasHarmonizado = cliente.reservas.filter((r) => r.tipo === "harmonizado");
@@ -75,6 +77,7 @@ export default async function ClienteDetalhePage({
             </div>
           )}
         </div>
+        <EditarClienteDialog cliente={cliente} />
       </div>
 
       <div className="w-full overflow-hidden rounded-[26px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)]">
@@ -180,6 +183,35 @@ export default async function ClienteDetalhePage({
           )}
         </div>
       </div>
+
+      {eventos.length > 0 && (
+        <div className="w-full overflow-hidden rounded-[26px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)]">
+          <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-[18px] py-3">
+            <PartyPopper size={15} className="text-[var(--color-text-muted)]" />
+            <p className="text-[13px] font-medium text-[var(--color-text-primary)]">Eventos</p>
+          </div>
+          <div className="flex w-full flex-col">
+            {eventos.map((e) => (
+              <div
+                key={e.id}
+                className="flex w-full flex-wrap items-center gap-3 border-b border-white/5 px-[18px] py-3 text-[13px] last:border-0"
+              >
+                <div className="flex min-w-[160px] flex-1 flex-col gap-0.5">
+                  <p className="font-medium text-[var(--color-text-primary)]">{e.nomeEvento}</p>
+                  {e.tipo && <p className="text-[11.5px] text-[var(--color-text-muted)]">{e.tipo}</p>}
+                </div>
+                <p className="text-[var(--color-text-secondary)]">
+                  {formatData(e.data)}
+                  {e.horario && ` às ${e.horario}`}
+                </p>
+                <p className="text-[var(--color-text-secondary)]">{e.pessoas} pessoas</p>
+                {e.valor !== null && <p className="text-[var(--color-text-secondary)]">{formatBRL(e.valor)}</p>}
+                <StatusBadge status={e.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

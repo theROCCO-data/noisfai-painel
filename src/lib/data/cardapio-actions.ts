@@ -11,6 +11,7 @@ export type SalvarItemInput = {
   nome: string;
   descricao: string;
   preco: number;
+  precoIfood: number | null;
   disponivelPresencial: boolean;
   disponivelIfood: boolean;
 };
@@ -29,6 +30,7 @@ export async function salvarItemCardapio(input: SalvarItemInput): Promise<Action
     nome: input.nome,
     descricao: input.descricao || null,
     preco: input.preco,
+    preco_ifood: input.disponivelIfood ? input.precoIfood : null,
     disponivel_presencial: input.disponivelPresencial,
     disponivel_ifood: input.disponivelIfood,
     updated_at: new Date().toISOString(),

@@ -55,26 +55,34 @@ export async function criarReservaManual(input: CriarReservaInput): Promise<Acti
   });
   if (rpcErr) return { ok: false, error: `Erro ao reservar vagas: ${rpcErr.message}` };
 
-  // upsert em `clientes` por telefone (chave única) — mantém o cadastro
-  // acumulando histórico real de quem já passou pelo Noi, inclusive reservas
-  // lançadas manualmente pelo balcão.
-  const { data: cliente, error: clienteErr } = await supabase
+  // Só cria um cliente novo se esse telefone ainda não existir — se já
+  // existir, reaproveita o cadastro tal como está. O nome dado aqui fica só
+  // nessa reserva (reservas.nome, abaixo), não sobrescreve o cadastro
+  // mestre: telefone é a chave de identidade, não o nome — quem liga de
+  // novo pode dar um nome diferente (apelido, quem atendeu o telefone
+  // dessa vez etc.) sem isso "corrigir" o cliente já cadastrado.
+  const { data: clienteExistente, error: buscaErr } = await supabase
     .from("clientes")
-    .upsert(
-      {
-        telefone: input.telefone,
-        nome: input.nome,
-        cpf: input.cpf || null,
-        email: input.email || null,
-      },
-      { onConflict: "telefone" }
-    )
     .select("id")
-    .single();
-  if (clienteErr) return { ok: false, error: `Erro ao gravar cliente: ${clienteErr.message}` };
+    .eq("telefone", input.telefone)
+    .maybeSingle();
+  if (buscaErr) return { ok: false, error: `Erro ao checar cliente: ${buscaErr.message}` };
+
+  let clienteId: number;
+  if (clienteExistente) {
+    clienteId = clienteExistente.id;
+  } else {
+    const { data: novoCliente, error: clienteErr } = await supabase
+      .from("clientes")
+      .insert({ telefone: input.telefone, nome: input.nome, cpf: input.cpf || null, email: input.email || null })
+      .select("id")
+      .single();
+    if (clienteErr) return { ok: false, error: `Erro ao gravar cliente: ${clienteErr.message}` };
+    clienteId = novoCliente.id;
+  }
 
   const { error: insertErr } = await supabase.from("reservas").insert({
-    cliente_id: cliente.id,
+    cliente_id: clienteId,
     nome: input.nome,
     telefone: input.telefone,
     cpf: input.cpf || null,
@@ -162,12 +170,12 @@ export async function atualizarReserva(reservaId: number, input: EditarReservaIn
     if (capUpdateErr) return { ok: false, error: `Erro ao ajustar capacidade: ${capUpdateErr.message}` };
   }
 
-  // mantém `clientes` em dia (mesmo telefone, dado desnormalizado pode ter mudado)
-  await supabase
-    .from("clientes")
-    .update({ nome: input.nome, cpf: input.cpf || null, email: input.email || null })
-    .eq("telefone", reserva.telefone);
-
+  // Propositalmente NÃO atualiza `clientes` aqui — nome/cpf/email dados
+  // nesta edição valem só pra essa reserva (colunas abaixo, desnormalizadas
+  // em `reservas`). O cadastro mestre do cliente só muda se ele for
+  // realmente novo (ver `criarReservaManual`), pra não sobrescrever o nome
+  // de alguém já cadastrado só porque essa reserva específica veio com um
+  // nome diferente.
   const { error: updateErr } = await supabase
     .from("reservas")
     .update({

@@ -4,8 +4,12 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { X, Camera } from "lucide-react";
 import { atualizarEdicaoJH } from "@/lib/data/jantar-harmonizado-actions";
+import { toast } from "@/lib/toast";
 import { Toggle } from "@/components/ui/toggle";
 import { DatePicker } from "@/components/ui/date-picker";
+import { MaskedTimeInput } from "@/components/ui/masked-time-input";
+import { CardapioJHFields } from "@/components/jantar-harmonizado/cardapio-jh-fields";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 import type { EdicaoJH } from "@/lib/data/jantar-harmonizado";
 
 export function EditarEdicaoDialog({
@@ -27,8 +31,12 @@ export function EditarEdicaoDialog({
     formData.set("id", String(edicao.id));
     startTransition(async () => {
       const result = await atualizarEdicaoJH(formData);
-      if (result.ok) setOpen(false);
-      else setError(result.error);
+      if (result.ok) {
+        setOpen(false);
+        toast("Edição salva.");
+      } else {
+        setError(result.error);
+      }
     });
   }
 
@@ -39,15 +47,24 @@ export function EditarEdicaoDialog({
 
   const defaults =
     modo === "nova"
-      ? { titulo: "", dataEvento: "", valorPessoa: edicao.valorPessoa, cotaVagas: edicao.cotaVagas ?? 40, imagemUrl: "", ativo: true }
+      ? { titulo: "", dataEvento: "", horaEvento: "", valorPessoa: edicao.valorPessoa, cotaVagas: edicao.cotaVagas ?? 40, imagemUrl: "", ativo: true }
       : {
           titulo: edicao.titulo,
           dataEvento: edicao.dataEvento,
+          horaEvento: edicao.horaEvento ?? "",
           valorPessoa: edicao.valorPessoa,
           cotaVagas: edicao.cotaVagas ?? 40,
           imagemUrl: edicao.imagemUrl ?? "",
           ativo: edicao.ativo,
         };
+  // "Nova edição" começa em branco/limpa (mesma linha reaproveitada, ver
+  // comentário acima); "Editar edição" mantém o cardápio que já existe.
+  const cardapioDefaults =
+    modo === "nova"
+      ? { intro: null, palestrante: null, etapas: [], regrasReserva: null }
+      : { intro: edicao.cardapioIntro, palestrante: edicao.cardapioPalestrante, etapas: edicao.cardapioEtapas, regrasReserva: edicao.regrasReserva };
+
+  useEscapeClose(open, () => setOpen(false));
 
   return (
     <>
@@ -64,13 +81,16 @@ export function EditarEdicaoDialog({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="flex w-[440px] flex-col gap-5 rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)] px-[26px] py-[22px]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setOpen(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[85vh] w-[440px] flex-col gap-5 overflow-y-auto rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)] px-[26px] py-[22px]"
+          >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-[17px] font-semibold text-[var(--color-text-primary)]">
                 {modo === "nova" ? "Nova edição" : "Editar edição"}
               </h2>
-              <button onClick={() => setOpen(false)} className="text-[var(--color-text-muted)]">
+              <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>
@@ -113,6 +133,13 @@ export function EditarEdicaoDialog({
                   <DatePicker name="dataEvento" defaultValue={defaults.dataEvento} required />
                 </label>
                 <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="text-[13px] text-[var(--color-text-secondary)]">Hora (opcional)</span>
+                  <MaskedTimeInput name="horaEvento" defaultValue={defaults.horaEvento} />
+                </label>
+              </div>
+
+              <div className="flex gap-3.5">
+                <label className="flex flex-1 flex-col gap-1.5">
                   <span className="text-[13px] text-[var(--color-text-secondary)]">Valor por pessoa</span>
                   <input
                     name="valorPessoa"
@@ -124,14 +151,23 @@ export function EditarEdicaoDialog({
                     className="dialog-input"
                   />
                 </label>
+                <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="text-[13px] text-[var(--color-text-secondary)]">Cota de vagas</span>
+                  <input name="cotaVagas" type="number" min={0} defaultValue={defaults.cotaVagas} required className="dialog-input" />
+                </label>
               </div>
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[13px] text-[var(--color-text-secondary)]">Cota de vagas</span>
-                <input name="cotaVagas" type="number" min={0} defaultValue={defaults.cotaVagas} required className="dialog-input" />
-              </label>
-
               <Toggle name="ativo" defaultChecked={defaults.ativo} label="Edição ativa (visível para o bot)" />
+
+              <div className="flex flex-col gap-1.5 border-t border-white/[0.07] pt-4">
+                <span className="text-[13px] font-medium text-[var(--color-text-primary)]">Cardápio do jantar</span>
+                <CardapioJHFields
+                  defaultIntro={cardapioDefaults.intro}
+                  defaultPalestrante={cardapioDefaults.palestrante}
+                  defaultEtapas={cardapioDefaults.etapas}
+                  defaultRegrasReserva={cardapioDefaults.regrasReserva}
+                />
+              </div>
 
               {error && <p className="text-[12.5px] text-[var(--color-status-red)]">{error}</p>}
 

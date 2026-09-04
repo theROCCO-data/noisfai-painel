@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 import { X, ZoomIn } from "lucide-react";
 import { recortarImagem } from "@/lib/crop-imagem";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function ImagemCropDialog({
   imageSrc,
@@ -30,6 +31,8 @@ export function ImagemCropDialog({
     onConfirm(blob);
   }
 
+  useEscapeClose(true, onCancel);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70" onClick={onCancel}>
       <div
@@ -38,7 +41,7 @@ export function ImagemCropDialog({
       >
         <div className="flex items-center justify-between">
           <h2 className="font-display text-[16px] font-semibold text-[var(--color-text-primary)]">Ajustar imagem</h2>
-          <button onClick={onCancel} className="text-[var(--color-text-muted)]">
+          <button onClick={onCancel} aria-label="Fechar" className="text-[var(--color-text-muted)]">
             <X size={18} />
           </button>
         </div>

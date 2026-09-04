@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { MobileTopBar } from "@/components/layout/mobile-topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { BackgroundGlow } from "@/components/layout/background-glow";
+import { Toaster } from "@/components/ui/toaster";
 import { getCurrentStaffUser } from "@/lib/auth";
 import { getConfiguracoes } from "@/lib/data/configuracoes";
 
@@ -24,6 +25,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
         </main>
         <MobileNav />
       </div>
+      <Toaster />
     </div>
   );
 }

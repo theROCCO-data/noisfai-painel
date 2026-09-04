@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Users, SlidersHorizontal, BookOpen, ShoppingBag, Settings, ChevronRight } from "lucide-react";
+import { BarChart3, Users, SlidersHorizontal, BookOpen, ShoppingBag, Settings, ChevronRight, PartyPopper, Store } from "lucide-react";
 import { getCurrentStaffUser } from "@/lib/auth";
 import { SairButton } from "@/components/configuracoes/sair-button";
 
@@ -7,10 +7,12 @@ export const dynamic = "force-dynamic";
 
 const ITENS = [
   { href: "/analises", label: "Análises", icon: BarChart3 },
+  { href: "/eventos", label: "Eventos", icon: PartyPopper },
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/capacidade", label: "Capacidade", icon: SlidersHorizontal },
   { href: "/cardapio", label: "Cardápio", icon: BookOpen },
   { href: "/ifood", label: "iFood", icon: ShoppingBag },
+  { href: "/perfil-restaurante", label: "Perfil do restaurante", icon: Store },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 

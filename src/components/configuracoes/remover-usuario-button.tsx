@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { excluirUsuario } from "@/lib/data/usuarios-actions";
+import { toast } from "@/lib/toast";
 
 export function RemoverUsuarioButton({ id, nome }: { id: string; nome: string }) {
   const [pending, startTransition] = useTransition();
@@ -13,7 +14,8 @@ export function RemoverUsuarioButton({ id, nome }: { id: string; nome: string })
     setError(null);
     startTransition(async () => {
       const result = await excluirUsuario(id);
-      if (!result.ok) setError(result.error);
+      if (result.ok) toast("Usuário removido.");
+      else setError(result.error);
     });
   }
 
@@ -23,6 +25,7 @@ export function RemoverUsuarioButton({ id, nome }: { id: string; nome: string })
         onClick={handleClick}
         disabled={pending}
         title="Remover usuário"
+        aria-label="Remover usuário"
         className="flex size-[26px] items-center justify-center rounded-[8px] text-[var(--color-text-muted)] hover:bg-[rgba(248,113,113,0.12)] hover:text-[var(--color-status-red)] disabled:opacity-50"
       >
         <Trash2 size={14} />

@@ -209,7 +209,7 @@ export default async function ReservasPage({
         <TabelaRedimensionavel tableId="reservas">
           <div className="w-full overflow-hidden rounded-[26px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)]">
             <div className="flex w-full items-center border-b border-[var(--color-border)] px-[18px] py-[9px] text-[12px] font-medium text-[var(--color-text-muted)]">
-              <div className="flex flex-1 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
                 <Coluna id="cliente" defaultWidth={200} header>Cliente</Coluna>
                 <Coluna id="telefone" defaultWidth={130} header>Telefone</Coluna>
                 <Coluna id="data" defaultWidth={90} header>Data</Coluna>
@@ -233,7 +233,7 @@ export default async function ReservasPage({
                   key={r.id}
                   className="flex w-full items-center border-b border-white/5 px-[18px] py-3 text-[13px] last:border-0"
                 >
-                  <div className="flex flex-1 items-center gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
                     <Coluna id="cliente" defaultWidth={200} className="truncate text-[var(--color-text-primary)]">
                       {r.nome}
                     </Coluna>
@@ -286,10 +286,12 @@ export default async function ReservasPage({
         <span>
           Mostrando {reservas.length} de {total}
         </span>
+        {totalPages > 1 && <span>Página {page} de {totalPages}</span>}
         <div className="flex gap-2">
           <Link
             href={buildHref(baseParams, { page: Math.max(1, page - 1) })}
             aria-disabled={page <= 1}
+            aria-label="Página anterior"
             className={`flex size-[26px] items-center justify-center rounded-[8px] border border-white/10 ${page <= 1 ? "pointer-events-none opacity-40" : "hover:border-white/20"}`}
           >
             <ChevronLeft size={14} />
@@ -297,6 +299,7 @@ export default async function ReservasPage({
           <Link
             href={buildHref(baseParams, { page: Math.min(totalPages, page + 1) })}
             aria-disabled={page >= totalPages}
+            aria-label="Próxima página"
             className={`flex size-[26px] items-center justify-center rounded-[8px] border border-white/10 ${page >= totalPages ? "pointer-events-none opacity-40" : "hover:border-white/20"}`}
           >
             <ChevronRight size={14} />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MessageSquareText, X, Ban } from "lucide-react";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function ObservacaoPopup({
   observacao,
@@ -14,6 +15,8 @@ export function ObservacaoPopup({
 }) {
   const [open, setOpen] = useState(false);
   const temAlgo = !!observacao || !!motivoCancelamento;
+
+  useEscapeClose(open && temAlgo, () => setOpen(false));
 
   if (!temAlgo) {
     return (
@@ -28,6 +31,7 @@ export function ObservacaoPopup({
       <button
         onClick={() => setOpen(true)}
         title="Ver observação"
+        aria-label="Ver observação"
         className="flex shrink-0 items-center text-[var(--color-status-amber)] hover:text-[var(--color-status-amber)]/80"
       >
         <MessageSquareText size={15} />
@@ -43,7 +47,7 @@ export function ObservacaoPopup({
               <h2 className="font-display text-[15px] font-semibold text-[var(--color-text-primary)]">
                 Observação — {nome}
               </h2>
-              <button onClick={() => setOpen(false)} className="text-[var(--color-text-muted)]">
+              <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>

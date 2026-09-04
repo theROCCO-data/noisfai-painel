@@ -14,6 +14,8 @@ import {
   ShoppingBag,
   Users,
   LogOut,
+  PartyPopper,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-actions";
@@ -30,11 +32,13 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/analises", label: "Análises", icon: BarChart3 },
   { href: "/conversas", label: "Conversas", icon: MessageCircle },
   { href: "/reservas", label: "Reservas", icon: CalendarCheck },
-  { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/jantar-harmonizado", label: "Jantar Harmonizado", icon: Wine },
+  { href: "/eventos", label: "Eventos", icon: PartyPopper },
+  { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/capacidade", label: "Capacidade", icon: SlidersHorizontal },
   { href: "/cardapio", label: "Cardápio", icon: BookOpen },
   { href: "/ifood", label: "iFood", icon: ShoppingBag },
+  { href: "/perfil-restaurante", label: "Perfil do restaurante", icon: Store },
 ];
 
 type SidebarProps = {
@@ -133,6 +137,7 @@ export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = nu
         <button
           onClick={() => signOut()}
           title="Sair"
+          aria-label="Sair"
           className="flex size-6 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text-primary)]"
         >
           <LogOut size={14} />

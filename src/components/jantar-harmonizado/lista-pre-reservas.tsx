@@ -1,10 +1,14 @@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabelaRedimensionavel, Coluna } from "@/components/ui/tabela-redimensionavel";
 import { ConfirmarPagamentoButton } from "@/components/jantar-harmonizado/confirmar-pagamento-button";
+import { EditarReservaJHDialog } from "@/components/jantar-harmonizado/editar-reserva-jh-dialog";
 import type { PreReservaJH } from "@/lib/data/jantar-harmonizado";
 
 function formatData(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+}
+function formatBRL(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export function ListaPreReservas({
@@ -12,11 +16,14 @@ export function ListaPreReservas({
   itens,
   vazio,
   mostrarConfirmar,
+  valorPessoa,
 }: {
   tableId: string;
   itens: PreReservaJH[];
   vazio: string;
   mostrarConfirmar: boolean;
+  /** Valor por pessoa da edição atual — multiplica por `pessoas` pra mostrar o valor esperado de cada reserva. */
+  valorPessoa: number;
 }) {
   return (
     <>
@@ -31,7 +38,7 @@ export function ListaPreReservas({
                 <div className="flex flex-col gap-0.5">
                   <p className="text-[14px] font-semibold text-[var(--color-text-primary)]">{p.nome}</p>
                   <p className="text-[12px] text-[var(--color-text-muted)]">
-                    {p.pessoas} pessoa{p.pessoas === 1 ? "" : "s"} · {formatData(p.data)}
+                    {p.pessoas} pessoa{p.pessoas === 1 ? "" : "s"} · {formatData(p.data)} · {formatBRL(p.pessoas * valorPessoa)}
                   </p>
                 </div>
                 <span
@@ -53,7 +60,10 @@ export function ListaPreReservas({
                 ) : (
                   <span className="text-[12.5px] text-[var(--color-text-muted)]">Sem comprovante</span>
                 )}
-                {mostrarConfirmar && p.comprovanteUrl && <ConfirmarPagamentoButton reservaId={p.id} />}
+                <div className="flex items-center gap-1">
+                  {mostrarConfirmar && p.comprovanteUrl && <ConfirmarPagamentoButton reservaId={p.id} />}
+                  <EditarReservaJHDialog reserva={p} />
+                </div>
               </div>
             </div>
           ))
@@ -66,11 +76,12 @@ export function ListaPreReservas({
           <div className="flex w-full items-center gap-3 px-[18px] py-[9px] text-[12px] font-medium text-[var(--color-text-muted)]">
             <Coluna id="cliente" defaultWidth={220} header>Cliente</Coluna>
             <Coluna id="pessoas" defaultWidth={80} header>Pessoas</Coluna>
+            <Coluna id="valor" defaultWidth={100} header>Valor</Coluna>
             <Coluna id="data" defaultWidth={100} header>Data</Coluna>
             <Coluna id="canal" defaultWidth={90} header>Canal</Coluna>
             <Coluna id="pagamento" defaultWidth={130} header>Pagamento</Coluna>
             <Coluna id="comprovante" defaultWidth={160} header>Comprovante</Coluna>
-            {mostrarConfirmar && <Coluna id="acoes" defaultWidth={170} header>Ações</Coluna>}
+            <Coluna id="acoes" defaultWidth={170} header>Ações</Coluna>
           </div>
           {itens.length === 0 ? (
             <p className="px-[18px] py-8 text-center text-[13px] text-[var(--color-text-muted)]">{vazio}</p>
@@ -82,6 +93,9 @@ export function ListaPreReservas({
                 </Coluna>
                 <Coluna id="pessoas" defaultWidth={80} className="text-[var(--color-text-secondary)]">
                   {p.pessoas}
+                </Coluna>
+                <Coluna id="valor" defaultWidth={100} className="font-medium text-[var(--color-text-primary)]">
+                  {formatBRL(p.pessoas * valorPessoa)}
                 </Coluna>
                 <Coluna id="data" defaultWidth={100} className="text-[var(--color-text-secondary)]">
                   {formatData(p.data)}
@@ -109,11 +123,10 @@ export function ListaPreReservas({
                     <span className="text-[var(--color-text-muted)]">—</span>
                   )}
                 </Coluna>
-                {mostrarConfirmar && (
-                  <Coluna id="acoes" defaultWidth={170}>
-                    {p.comprovanteUrl && <ConfirmarPagamentoButton reservaId={p.id} />}
-                  </Coluna>
-                )}
+                <Coluna id="acoes" defaultWidth={170} className="flex items-center gap-1">
+                  {mostrarConfirmar && p.comprovanteUrl && <ConfirmarPagamentoButton reservaId={p.id} />}
+                  <EditarReservaJHDialog reserva={p} />
+                </Coluna>
               </div>
             ))
           )}

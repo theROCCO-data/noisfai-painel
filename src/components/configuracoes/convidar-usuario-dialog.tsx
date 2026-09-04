@@ -4,11 +4,12 @@ import { useState, useTransition } from "react";
 import { Plus, X, Copy } from "lucide-react";
 import { convidarUsuario } from "@/lib/data/usuarios-actions";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { useEscapeClose } from "@/hooks/use-escape-close";
 
 export function ConvidarUsuarioDialog() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [criado, setCriado] = useState<{ email: string; senha: string } | null>(null);
+  const [criado, setCriado] = useState<{ email: string; senha: string; emailEnviado: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(formData: FormData) {
@@ -20,7 +21,7 @@ export function ConvidarUsuarioDialog() {
     startTransition(async () => {
       const result = await convidarUsuario(formData);
       if (result.ok && result.senhaTemporaria) {
-        setCriado({ email: String(formData.get("email")), senha: result.senhaTemporaria });
+        setCriado({ email: String(formData.get("email")), senha: result.senhaTemporaria, emailEnviado: !!result.emailEnviado });
       } else if (!result.ok) {
         setError(result.error);
       }
@@ -32,6 +33,8 @@ export function ConvidarUsuarioDialog() {
     setCriado(null);
     setError(null);
   }
+
+  useEscapeClose(open, fechar);
 
   return (
     <>
@@ -50,7 +53,7 @@ export function ConvidarUsuarioDialog() {
               <h2 className="font-display text-[17px] font-semibold text-[var(--color-text-primary)]">
                 Convidar usuário
               </h2>
-              <button onClick={fechar} className="text-[var(--color-text-muted)]">
+              <button onClick={fechar} aria-label="Fechar" className="text-[var(--color-text-muted)]">
                 <X size={18} />
               </button>
             </div>
@@ -58,14 +61,17 @@ export function ConvidarUsuarioDialog() {
             {criado ? (
               <div className="flex flex-col gap-3">
                 <p className="text-[13px] text-[var(--color-text-primary)]">
-                  Conta criada para <span className="font-semibold">{criado.email}</span>. Envie essa senha
-                  temporária pra pessoa (não fica salva em nenhum lugar depois que você fechar esta janela):
+                  Conta criada para <span className="font-semibold">{criado.email}</span>.{" "}
+                  {criado.emailEnviado
+                    ? "Um e-mail com o acesso já foi enviado pra essa pessoa."
+                    : "Não deu pra enviar o e-mail automático — repasse essa senha temporária manualmente:"}
                 </p>
                 <button
                   type="button"
                   onClick={() => navigator.clipboard.writeText(criado.senha)}
                   className="flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border-soft)] bg-white/[0.04] px-3 py-2.5 text-left"
                   title="Copiar"
+                  aria-label="Copiar senha temporária"
                 >
                   <span className="font-mono text-[13px] text-[var(--color-text-primary)]">{criado.senha}</span>
                   <Copy size={14} className="shrink-0 text-[var(--color-text-muted)]" />

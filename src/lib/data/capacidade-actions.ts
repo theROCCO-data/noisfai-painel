@@ -59,8 +59,17 @@ export async function atualizarCapacidadeTotal(id: number, novoValor: number): P
  * uma vez — usado quando o gerente quer uma mudança geral (ex: capacidade
  * de todo o período visível na tela) em vez de ajustar dia por dia. Cada
  * linha ajusta o disponível pela própria diferença (não zera o consumido).
+ *
+ * `dataReferencia` é a data do dia que foi editado — o lote só atinge dias
+ * a partir dela (inclusive), nunca pra trás. Sem isso, "aplicar a todos os
+ * dias listados" mudaria também dias que já passaram, manipulando dados
+ * históricos que já refletiram reservas reais.
  */
-export async function atualizarCapacidadeTotalEmLote(ids: number[], novoValor: number): Promise<ActionResult> {
+export async function atualizarCapacidadeTotalEmLote(
+  ids: number[],
+  novoValor: number,
+  dataReferencia: string
+): Promise<ActionResult> {
   if (!Number.isFinite(novoValor) || novoValor < 0) {
     return { ok: false, error: "Valor inválido." };
   }
@@ -70,7 +79,8 @@ export async function atualizarCapacidadeTotalEmLote(ids: number[], novoValor: n
   const { data: linhas, error: fetchErr } = await supabase
     .from("capacidade_turno")
     .select("id, capacidade_bot, disponivel_atual")
-    .in("id", ids);
+    .in("id", ids)
+    .gte("data", dataReferencia);
   if (fetchErr) return { ok: false, error: fetchErr.message };
 
   const resultados = await Promise.all(

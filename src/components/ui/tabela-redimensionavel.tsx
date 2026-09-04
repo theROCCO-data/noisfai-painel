@@ -34,13 +34,13 @@ export function TabelaRedimensionavel({
     try {
       const raw = localStorage.getItem(storageKey);
       const parsed = raw ? JSON.parse(raw) : {};
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carrega a preferência salva do navegador ao montar (localStorage não dá pra ler durante o render)
       setLarguras(parsed);
       setSalvas(parsed);
     } catch {
       // ignora — segue com as larguras padrão de cada Coluna
     }
     setCarregado(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
   function setLargura(id: string, largura: number) {
