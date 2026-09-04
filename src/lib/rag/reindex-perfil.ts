@@ -5,9 +5,8 @@ import { gerarEmbedding } from "@/lib/rag/embeddings";
 /**
  * Mantém o RAG (`documents`, source = 'perfil_restaurante') sincronizado com
  * o que o painel grava em `configuracoes_painel` (campos fixos) e
- * `perfil_restaurante` (regras e comandos por categoria). Antes, o que o bot
- * falava sobre endereço/horário/políticas vinha de uma planilha Google
- * Sheets (retirada — o Painel é a fonte única agora).
+ * `perfil_restaurante` (regras e comandos por categoria) — o bot sempre fala
+ * a versão atual do que está no Painel.
  *
  * Reindexação é sempre um replace total dos documentos dessa source: mais
  * simples que rastrear diffs por campo, e o volume é pequeno o bastante
