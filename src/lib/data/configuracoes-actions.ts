@@ -3,6 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/lib/data/reservas-actions";
+import { reindexarPerfilRestaurante } from "@/lib/rag/reindex-perfil";
+
+async function reindexarOuAvisar(): Promise<ActionResult> {
+  try {
+    await reindexarPerfilRestaurante();
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Salvo, mas a reindexação do RAG falhou: ${(e as Error).message}. O bot ainda vai falar a versão antiga.`,
+    };
+  }
+}
 
 export async function atualizarLogo(formData: FormData): Promise<ActionResult> {
   const supabase = createAdminClient();
@@ -61,7 +74,7 @@ export async function atualizarPerfilRestaurante(formData: FormData): Promise<Ac
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/perfil-restaurante");
-  return { ok: true };
+  return reindexarOuAvisar();
 }
 
 export async function atualizarInfoEspacoEventos(formData: FormData): Promise<ActionResult> {
@@ -76,5 +89,5 @@ export async function atualizarInfoEspacoEventos(formData: FormData): Promise<Ac
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/eventos");
-  return { ok: true };
+  return reindexarOuAvisar();
 }

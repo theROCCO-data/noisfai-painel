@@ -23,9 +23,25 @@ async function chamarWebhookControle(url: string | undefined, telefone: string):
   }
 }
 
+async function registrarHandoff(telefone: string, tipo: "iniciado" | "finalizado", status: "humano" | null) {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const staff = await getCurrentStaffUser();
+  const supabase = createAdminClient();
+  // best-effort — não deve derrubar o fluxo de atendimento se o log falhar.
+  await supabase.from("handoff_eventos").insert({
+    telefone,
+    tipo,
+    status,
+    origem: "painel",
+    staff_user_id: staff?.id ?? null,
+    staff_nome: staff?.name ?? null,
+  });
+}
+
 export async function iniciarAtendimentoHumano(telefone: string, conversationId: string): Promise<ActionResult> {
   const result = await chamarWebhookControle(process.env.N8N_INICIAR_HUMANO_URL, telefone);
   if (result.ok) {
+    await registrarHandoff(telefone, "iniciado", "humano");
     revalidatePath(`/conversas/${conversationId}`);
     revalidatePath("/conversas");
     revalidatePath("/inicio");
@@ -36,6 +52,7 @@ export async function iniciarAtendimentoHumano(telefone: string, conversationId:
 export async function finalizarAtendimentoHumano(telefone: string, conversationId: string): Promise<ActionResult> {
   const result = await chamarWebhookControle(process.env.N8N_FINALIZAR_HUMANO_URL, telefone);
   if (result.ok) {
+    await registrarHandoff(telefone, "finalizado", null);
     revalidatePath(`/conversas/${conversationId}`);
     revalidatePath("/conversas");
     revalidatePath("/inicio");
