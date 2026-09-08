@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
  * (lista + thread aberta) periodicamente, pra mensagens novas do bot/cliente
  * aparecerem sozinhas. Não renderiza nada — só dispara router.refresh().
  */
-export function AutoRefresh({ intervalMs = 4000 }: { intervalMs?: number }) {
+export function AutoRefresh({ intervalMs = 2000 }: { intervalMs?: number }) {
   const router = useRouter();
 
   useEffect(() => {
