@@ -1,6 +1,12 @@
 import "server-only";
 import { Resend } from "resend";
 
+// Logo da marca Nyx (não a do restaurante em configuracoes_painel.logo_url,
+// que é outra coisa) — mesmo arquivo usado como favicon em src/app/icon.png,
+// hospedado aqui só porque e-mail precisa de uma URL pública.
+const LOGO_EMAIL_URL =
+  "https://bvydxgjotxxkkszubvbx.supabase.co/storage/v1/object/public/painel-uploads/logo-painel/nyx-brand-email-1788895983975.png";
+
 /**
  * E-mail de boas-vindas com login/senha temporária pra um usuário novo do
  * Painel — best-effort: se falhar (sem RESEND_API_KEY configurada, domínio
@@ -26,6 +32,7 @@ export async function enviarEmailBoasVindas(params: {
 
   const resend = new Resend(apiKey);
   const linkAcesso = appUrl ? `${appUrl}/login` : "#";
+  const linkTrocarSenha = appUrl ? `${appUrl}/redefinir-senha` : "#";
 
   const html = `
 <!DOCTYPE html>
@@ -37,7 +44,7 @@ export async function enviarEmailBoasVindas(params: {
         <table role="presentation" width="440" cellpadding="0" cellspacing="0" style="max-width:440px;width:100%;background:linear-gradient(180deg,#161022 0%,#0e0a18 100%);border:1px solid rgba(168,85,247,0.18);border-radius:22px;overflow:hidden;">
           <tr>
             <td style="padding:36px 32px 8px;text-align:center;">
-              <div style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:16px;background:linear-gradient(163deg,#a855f7 14%,#6d28d9 86%);font-size:22px;line-height:52px;">🔑</div>
+              <img src="${LOGO_EMAIL_URL}" alt="Nyx" width="64" height="64" style="width:64px;height:64px;border-radius:16px;display:inline-block;" />
             </td>
           </tr>
           <tr>
@@ -70,7 +77,15 @@ export async function enviarEmailBoasVindas(params: {
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 32px 36px;text-align:center;">
+            <td style="padding:20px 32px 0;text-align:center;">
+              <p style="margin:0;color:#6b6280;font-size:11.5px;line-height:1.6;">
+                Se preferir, entre com a senha temporária e troque por uma de sua escolha em
+                <a href="${linkTrocarSenha}" style="color:#d8b4fe;text-decoration:underline;">Trocar senha</a> — fica dentro do Painel, em Configurações.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 36px;text-align:center;">
               <p style="margin:0;color:#6b6280;font-size:11.5px;line-height:1.6;">
                 Guarde essa senha num lugar seguro. Se não reconhece esse convite, ignore este e-mail.
               </p>
