@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { AudioPlayer } from "@/components/conversas/audio-player";
 
 export function MensagemMidia({ url, tipo }: { url: string; tipo: "image" | "audio" | "video" }) {
   const [zoom, setZoom] = useState(false);
 
   if (tipo === "audio") {
-    return <audio controls src={url} className="h-9 w-[260px]" />;
+    return <AudioPlayer url={url} />;
   }
 
   if (tipo === "video") {
