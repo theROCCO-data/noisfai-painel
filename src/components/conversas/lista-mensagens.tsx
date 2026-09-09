@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { formatHora, formatSeparadorData, diaChave } from "@/lib/format";
 import { MensagemTexto } from "@/components/conversas/mensagem-texto";
+import { MensagemMidia } from "@/components/conversas/mensagem-midia";
 import type { Mensagem } from "@/lib/data/conversas";
 
 export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
@@ -52,8 +53,12 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
               </div>
             )}
             {m.userMessage && (
-              <div className="flex w-fit max-w-[560px] flex-col gap-1 rounded-tl-[20px] rounded-tr-[20px] rounded-br-[20px] rounded-bl-[7px] border border-[var(--color-border-soft)] bg-white/[0.04] px-[18px] py-[14px]">
-                <MensagemTexto texto={m.userMessage} />
+              <div className="flex w-fit max-w-[560px] flex-col gap-2 rounded-tl-[20px] rounded-tr-[20px] rounded-br-[20px] rounded-bl-[7px] border border-[var(--color-border-soft)] bg-white/[0.04] px-[18px] py-[14px]">
+                {m.mediaUrl && m.mediaType ? (
+                  <MensagemMidia url={m.mediaUrl} tipo={m.mediaType} />
+                ) : (
+                  <MensagemTexto texto={m.userMessage} />
+                )}
                 <span className="self-end text-[10.5px] text-[var(--color-text-muted)]">{formatHora(m.createdAt)}</span>
               </div>
             )}

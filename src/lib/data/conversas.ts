@@ -56,6 +56,8 @@ export type Mensagem = {
   userMessage: string | null;
   botMessage: string | null;
   origem: "bot" | "painel" | "manual";
+  mediaUrl: string | null;
+  mediaType: "image" | "audio" | "video" | null;
 };
 
 export type ConversaDetalhe = {
@@ -82,7 +84,7 @@ export async function getConversa(conversationId: string): Promise<ConversaDetal
 
   const { data: msgs, error: msgErr } = await supabase
     .from("chat_messages")
-    .select("id, created_at, user_message, bot_message, origem")
+    .select("id, created_at, user_message, bot_message, origem, media_url, media_type")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
 
@@ -118,6 +120,8 @@ export async function getConversa(conversationId: string): Promise<ConversaDetal
       userMessage: m.user_message,
       botMessage: m.bot_message,
       origem: (m.origem ?? "bot") as "bot" | "painel" | "manual",
+      mediaUrl: m.media_url,
+      mediaType: m.media_type as "image" | "audio" | "video" | null,
     })),
   };
 }
