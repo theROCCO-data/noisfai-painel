@@ -58,12 +58,23 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
               </div>
             )}
             {m.botMessage && (
-              <div
-                className="ml-auto flex w-fit max-w-[560px] flex-col gap-1 rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[7px] border border-[rgba(168,85,247,0.3)] px-[18px] py-[14px]"
-                style={{ backgroundImage: "linear-gradient(172deg, rgba(168,85,247,0.24) 14%, rgba(124,58,237,0.14) 86%)" }}
-              >
-                <MensagemTexto texto={m.botMessage} />
-                <span className="self-end text-[10.5px] text-[var(--color-text-muted)]">{formatHora(m.createdAt)}</span>
+              <div className="ml-auto flex w-fit max-w-[560px] flex-col items-end gap-1">
+                {m.origem !== "bot" && (
+                  <span className="pr-1 text-[10.5px] font-medium text-[var(--color-text-muted)]">
+                    {m.origem === "painel" ? "Enviado pelo Painel" : "Enviado manualmente pelo WhatsApp"}
+                  </span>
+                )}
+                <div
+                  className="flex w-fit flex-col gap-1 rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[7px] border px-[18px] py-[14px]"
+                  style={
+                    m.origem === "manual"
+                      ? { borderColor: "rgba(251,191,36,0.35)", backgroundImage: "linear-gradient(172deg, rgba(251,191,36,0.18) 14%, rgba(217,119,6,0.10) 86%)" }
+                      : { borderColor: "rgba(168,85,247,0.3)", backgroundImage: "linear-gradient(172deg, rgba(168,85,247,0.24) 14%, rgba(124,58,237,0.14) 86%)" }
+                  }
+                >
+                  <MensagemTexto texto={m.botMessage} />
+                  <span className="self-end text-[10.5px] text-[var(--color-text-muted)]">{formatHora(m.createdAt)}</span>
+                </div>
               </div>
             )}
           </div>

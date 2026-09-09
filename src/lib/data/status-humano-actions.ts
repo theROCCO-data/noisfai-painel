@@ -107,6 +107,7 @@ export async function enviarMensagem(
   await supabase.from("chat_messages").insert({
     conversation_id: conversationId,
     bot_message: mensagemAssinada,
+    origem: "painel",
   });
 
   revalidatePath(`/conversas/${conversationId}`);

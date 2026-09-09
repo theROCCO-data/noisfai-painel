@@ -55,6 +55,7 @@ export type Mensagem = {
   createdAt: string;
   userMessage: string | null;
   botMessage: string | null;
+  origem: "bot" | "painel" | "manual";
 };
 
 export type ConversaDetalhe = {
@@ -81,7 +82,7 @@ export async function getConversa(conversationId: string): Promise<ConversaDetal
 
   const { data: msgs, error: msgErr } = await supabase
     .from("chat_messages")
-    .select("id, created_at, user_message, bot_message")
+    .select("id, created_at, user_message, bot_message, origem")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
 
@@ -116,6 +117,7 @@ export async function getConversa(conversationId: string): Promise<ConversaDetal
       createdAt: m.created_at,
       userMessage: m.user_message,
       botMessage: m.bot_message,
+      origem: (m.origem ?? "bot") as "bot" | "painel" | "manual",
     })),
   };
 }
