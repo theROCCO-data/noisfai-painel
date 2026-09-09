@@ -73,13 +73,18 @@ const FOTO_CACHE_MS = 24 * 60 * 60 * 1000;
 export async function getConversa(conversationId: string): Promise<ConversaDetalhe | null> {
   const supabase = createAdminClient();
 
-  const { data: chat, error: chatErr } = await supabase
+  // .limit(1) em vez de .maybeSingle(): se por qualquer motivo existir mais de
+  // uma linha em chats pro mesmo conversation_id (não deveria, há uma
+  // constraint unique em phone+app pra isso), a tela não quebra — só usa a
+  // primeira.
+  const { data: chatRows, error: chatErr } = await supabase
     .from("chats")
     .select("conversation_id, phone, foto_url, foto_atualizada_em")
     .eq("conversation_id", conversationId)
-    .maybeSingle();
+    .limit(1);
 
   if (chatErr) throw new Error(`getConversa: ${chatErr.message}`);
+  const chat = chatRows?.[0];
   if (!chat) return null;
 
   const { data: msgs, error: msgErr } = await supabase
