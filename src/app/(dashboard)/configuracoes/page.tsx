@@ -2,6 +2,7 @@ import { getCurrentStaffUser } from "@/lib/auth";
 import { listUsuarios } from "@/lib/data/usuarios";
 import { PerfilForm } from "@/components/configuracoes/perfil-form";
 import { ConvidarUsuarioDialog } from "@/components/configuracoes/convidar-usuario-dialog";
+import { AlterarSenhaDialog } from "@/components/configuracoes/alterar-senha-dialog";
 import { SairButton } from "@/components/configuracoes/sair-button";
 import { TabelaRedimensionavel, Coluna } from "@/components/ui/tabela-redimensionavel";
 import { RemoverUsuarioButton } from "@/components/configuracoes/remover-usuario-button";
@@ -36,7 +37,10 @@ export default async function ConfiguracoesPage() {
       <div className="w-full overflow-hidden rounded-[26px] border border-[var(--color-border-soft)] bg-gradient-to-b from-[var(--color-card-from)] to-[var(--color-card-to)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-[18px] py-[14px]">
           <h2 className="font-display text-[16px] font-semibold text-[var(--color-text-primary)]">Usuários e permissões</h2>
-          {podeRemover && <ConvidarUsuarioDialog />}
+          <div className="flex items-center gap-3">
+            <AlterarSenhaDialog />
+            {podeRemover && <ConvidarUsuarioDialog />}
+          </div>
         </div>
 
         {/* Mobile: lista de cartões — a tabela de colunas fixas não cabe numa tela pequena */}

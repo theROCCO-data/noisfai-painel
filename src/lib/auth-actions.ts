@@ -65,3 +65,28 @@ export async function redefinirSenha(formData: FormData): Promise<{ error: strin
 
   redirect("/inicio");
 }
+
+/**
+ * Mesma lógica de redefinirSenha, mas pra uso dentro do Painel já logado
+ * (dialog em Configurações) — sem redirect, e sem depender de um link de
+ * e-mail: usa a sessão atual, então só o próprio usuário pode trocar a
+ * própria senha.
+ */
+export async function alterarSenhaPropria(formData: FormData): Promise<{ error: string } | { ok: true }> {
+  const senha = String(formData.get("senha") ?? "");
+  const confirmarSenha = String(formData.get("confirmarSenha") ?? "");
+
+  if (senha.length < 8) return { error: "A senha precisa ter pelo menos 8 caracteres." };
+  if (senha !== confirmarSenha) return { error: "As senhas não coincidem." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sessão expirada. Faça login novamente." };
+
+  const { error } = await supabase.auth.updateUser({ password: senha });
+  if (error) return { error: error.message };
+
+  return { ok: true };
+}
