@@ -1,7 +1,14 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getCurrentStaffUser() {
+/**
+ * `cache()` (React, por request) — chamada em quase toda página/layout do
+ * Painel; sem isso, uma navegação que renderiza layout+page (ex.: abrir uma
+ * conversa) bate 2x no `supabase.auth.getUser()` pra buscar exatamente o
+ * mesmo usuário.
+ */
+export const getCurrentStaffUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,4 +23,4 @@ export async function getCurrentStaffUser() {
   const avatarUrl = (user.user_metadata?.avatarUrl as string | undefined) ?? null;
 
   return { id: user.id, name: nome, role: cargo, email: user.email ?? "", avatarUrl };
-}
+});

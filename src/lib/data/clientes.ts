@@ -28,17 +28,18 @@ function ultimosDigitos(telefone: string, n = 11) {
  * normalização, o nome do cliente nunca bateria com a conversa.
  */
 export async function buscarNomesPorTelefones(telefones: string[]): Promise<Map<string, string>> {
-  const unicos = Array.from(new Set(telefones.map((t) => ultimosDigitos(t))));
-  if (unicos.length === 0) return new Map();
+  if (telefones.length === 0) return new Map();
 
+  // busca a tabela inteira e casa em memória, em vez de montar um filtro
+  // com uma cláusula OR/ILIKE por telefone (chegava a ter ~900 cláusulas na
+  // lista de Conversas — query gigante, sem índice útil, pra uma tabela que
+  // hoje tem poucas linhas de qualquer forma).
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("clientes")
-    .select("nome, telefone")
-    .or(unicos.map((d) => `telefone.ilike.%${d}`).join(","));
+  const { data } = await supabase.from("clientes").select("nome, telefone");
 
   const porSufixo = new Map<string, string>();
   for (const c of data ?? []) {
+    if (!c.telefone) continue;
     porSufixo.set(ultimosDigitos(c.telefone), c.nome);
   }
 

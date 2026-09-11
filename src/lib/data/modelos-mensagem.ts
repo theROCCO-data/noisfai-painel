@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentStaffUser } from "@/lib/auth";
 
@@ -19,7 +20,7 @@ export type ModeloMensagem = {
  * cada atendente marca os próprios modelos mais usados sem afetar os outros.
  * Favoritos aparecem primeiro na lista, o resto em ordem alfabética.
  */
-export async function listModelosMensagem(): Promise<ModeloMensagem[]> {
+export const listModelosMensagem = cache(async (): Promise<ModeloMensagem[]> => {
   const supabase = createAdminClient();
 
   const [{ data, error }, staff] = await Promise.all([
@@ -47,4 +48,4 @@ export async function listModelosMensagem(): Promise<ModeloMensagem[]> {
     return a.nome.localeCompare(b.nome, "pt-BR");
   });
   return modelos;
-}
+});

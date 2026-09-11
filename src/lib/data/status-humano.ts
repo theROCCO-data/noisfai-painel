@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 export type StatusAtendimento = "ia" | "humano" | "atencao";
 
@@ -10,7 +11,11 @@ export type StatusAtendimento = "ia" | "humano" | "atencao";
  * "ia") em vez de derrubar a tela — status de atendimento é informativo,
  * não deve quebrar o painel.
  */
-export async function getStatusHumano(telefone: string): Promise<StatusAtendimento> {
+// cache() por telefone: a thread aberta confere o próprio status
+// (getStatusHumano) e a lista também confere (getStatusHumanoEmLote) — se o
+// telefone aberto estiver entre os mais recentes, isso deduplica a chamada
+// repetida ao webhook do n8n dentro da mesma renderização.
+export const getStatusHumano = cache(async (telefone: string): Promise<StatusAtendimento> => {
   const url = process.env.N8N_STATUS_HUMANO_URL;
   const token = process.env.N8N_STATUS_HUMANO_TOKEN;
   if (!url || !token) return "ia";
@@ -28,7 +33,7 @@ export async function getStatusHumano(telefone: string): Promise<StatusAtendimen
   } catch {
     return "ia";
   }
-}
+});
 
 export async function getStatusHumanoEmLote(telefones: string[]): Promise<Map<string, StatusAtendimento>> {
   const unicos = Array.from(new Set(telefones));
