@@ -11,16 +11,17 @@ import { ModelosMensagemManagerDialog } from "@/components/conversas/modelos-men
 
 export const dynamic = "force-dynamic";
 
-// Conferir o status humano/IA bate um webhook no n8n por telefone — com a
-// Evolution API agora expondo o histórico real (~900+ conversas, contra a
-// base quebrada do Supabase de antes, que mostrava muito menos), checar TODA
-// a lista a cada abertura/auto-refresh vira uma tempestade de requisições
-// que deixa a tela inteira lenta (foi exatamente o mesmo tipo de incidente
-// já registrado antes, só que agora com a lista completa). Limita a
-// checagem às conversas mais recentes — a lista já vem ordenada por
-// atualização, então é onde o status "humano/atenção" realmente importa;
-// conversas antigas fora desse recorte mostram "IA" por padrão.
-const LIMITE_STATUS_NA_LISTA = 60;
+// Conferir o status humano/IA bate um webhook no n8n por telefone. Medido
+// ao vivo: o n8n não escala bem com paralelismo (10 chamadas simultâneas
+// ~760ms, 40 ~1.8s, crescimento quase linear — é limite de concorrência do
+// próprio n8n, não da rede) — então o número aqui importa mais que o
+// esperado. 60 chegava a levar ~3s só nessa etapa (sentido pelo usuário
+// principalmente depois de "Iniciar Atendimento", que força um refresh
+// completo da lista via revalidatePath). Reduzido pra 20 (~1s) — a lista já
+// vem ordenada por atualização, então é onde o status "humano/atenção"
+// realmente importa; conversas antigas fora desse recorte mostram "IA" por
+// padrão.
+const LIMITE_STATUS_NA_LISTA = 20;
 
 export default async function ConversasLayout({ children }: LayoutProps<"/conversas">) {
   const [conversas, modelos, staff] = await Promise.all([

@@ -140,11 +140,11 @@ export type ConversaHumana = {
   ultimaMensagem: string;
 };
 
-// Mesma contenção aplicada em conversas/layout.tsx: checar status humano/IA
-// bate um webhook no n8n por telefone, e fazer isso pra TODA linha de
-// `chats` (que só cresce) numa tela com auto-refresh de 8s sobrecarrega o
-// n8n. Olha só as mais recentes, ordenadas por atualização.
-const LIMITE_STATUS_NO_DASHBOARD = 80;
+// Mesma contenção aplicada em conversas/layout.tsx (ver o comentário lá,
+// com a medição real: o n8n não escala bem com paralelismo — 40 chamadas
+// simultâneas já levam ~1.8s). Olha só as mais recentes, ordenadas por
+// atualização.
+const LIMITE_STATUS_NO_DASHBOARD = 20;
 
 export async function getConversasComHumano(): Promise<ConversaHumana[]> {
   const supabase = createAdminClient();
