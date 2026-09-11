@@ -38,13 +38,18 @@ async function registrarHandoff(telefone: string, tipo: "iniciado" | "finalizado
   });
 }
 
+// Só revalida a THREAD aberta, não a lista inteira nem a Início — essas
+// duas rodam a checagem de status em lote (20 telefones, ~1s no n8n) mais
+// tudo mais de `getConversas()`, e forçar isso a cada clique era boa parte
+// do "demora pra iniciar atendimento" sentido pelo usuário. A lista/Início
+// já se atualizam sozinhas no próprio auto-refresh (12s/8s) — o badge dessa
+// conversa específica só demora um pouco mais pra refletir ali, sem
+// bloquear a ação em si.
 export async function iniciarAtendimentoHumano(telefone: string): Promise<ActionResult> {
   const result = await chamarWebhookControle(process.env.N8N_INICIAR_HUMANO_URL, telefone);
   if (result.ok) {
     await registrarHandoff(telefone, "iniciado", "humano");
     revalidatePath(`/conversas/${telefone}`);
-    revalidatePath("/conversas");
-    revalidatePath("/inicio");
   }
   return result;
 }
@@ -54,8 +59,6 @@ export async function finalizarAtendimentoHumano(telefone: string): Promise<Acti
   if (result.ok) {
     await registrarHandoff(telefone, "finalizado", null);
     revalidatePath(`/conversas/${telefone}`);
-    revalidatePath("/conversas");
-    revalidatePath("/inicio");
   }
   return result;
 }
@@ -110,6 +113,5 @@ export async function enviarMensagem(telefone: string, mensagem: string): Promis
   }
 
   revalidatePath(`/conversas/${telefone}`);
-  revalidatePath("/conversas");
   return { ok: true };
 }
