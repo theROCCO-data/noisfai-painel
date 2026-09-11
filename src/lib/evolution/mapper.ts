@@ -79,13 +79,21 @@ function textoBrutoDaMensagem(msg: EvolutionMessageRecord): string | null {
   if (typeof m.conversation === "string") return m.conversation;
   const extended = m.extendedTextMessage as { text?: string } | undefined;
   if (extended?.text) return extended.text;
+  // mensagem de anúncio (clique-para-WhatsApp do Facebook/Instagram) — o
+  // texto de abertura fica dentro de `interactiveMessage.body.text`.
+  const interactive = m.interactiveMessage as { body?: { text?: string } } | undefined;
+  if (interactive?.body?.text) return interactive.body.text;
+  // reação com emoji a uma mensagem anterior — não tem texto próprio, só o emoji.
+  const reaction = m.reactionMessage as { text?: string } | undefined;
+  if (typeof reaction?.text === "string") return reaction.text ? `reagiu ${reaction.text}` : "removeu a reação";
   return null;
 }
 
 export type MidiaExtraida = {
   texto: string | null;
   mediaUrl: string | null;
-  mediaType: "image" | "audio" | "video" | null;
+  mediaType: "image" | "audio" | "video" | "document" | null;
+  nomeArquivo: string | null;
 };
 
 /**
@@ -112,15 +120,19 @@ export function extrairTextoOuMidia(msg: EvolutionMessageRecord): MidiaExtraida 
 
   if (msg.messageType === "imageMessage") {
     const img = m.imageMessage as { caption?: string } | undefined;
-    return { texto: img?.caption ?? null, mediaUrl: urlProxyMidia(msg), mediaType: "image" };
+    return { texto: img?.caption ?? null, mediaUrl: urlProxyMidia(msg), mediaType: "image", nomeArquivo: null };
   }
   if (msg.messageType === "audioMessage") {
-    return { texto: null, mediaUrl: urlProxyMidia(msg), mediaType: "audio" };
+    return { texto: null, mediaUrl: urlProxyMidia(msg), mediaType: "audio", nomeArquivo: null };
   }
   if (msg.messageType === "videoMessage") {
     const video = m.videoMessage as { caption?: string } | undefined;
-    return { texto: video?.caption ?? null, mediaUrl: urlProxyMidia(msg), mediaType: "video" };
+    return { texto: video?.caption ?? null, mediaUrl: urlProxyMidia(msg), mediaType: "video", nomeArquivo: null };
+  }
+  if (msg.messageType === "documentMessage") {
+    const doc = m.documentMessage as { caption?: string; fileName?: string } | undefined;
+    return { texto: doc?.caption ?? null, mediaUrl: urlProxyMidia(msg), mediaType: "document", nomeArquivo: doc?.fileName ?? null };
   }
 
-  return { texto: textoBrutoDaMensagem(msg), mediaUrl: null, mediaType: null };
+  return { texto: textoBrutoDaMensagem(msg), mediaUrl: null, mediaType: null, nomeArquivo: null };
 }

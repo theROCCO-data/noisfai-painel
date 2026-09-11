@@ -41,10 +41,11 @@ export type ConversaResumo = {
   fotoUrl: string | null;
 };
 
-function rotuloDeMidia(mediaType: "image" | "audio" | "video" | null): string | null {
+function rotuloDeMidia(mediaType: "image" | "audio" | "video" | "document" | null): string | null {
   if (mediaType === "image") return "📷 Imagem";
   if (mediaType === "audio") return "🎤 Áudio";
   if (mediaType === "video") return "🎥 Vídeo";
+  if (mediaType === "document") return "📄 Documento";
   return null;
 }
 
@@ -97,7 +98,8 @@ export type Mensagem = {
   botMessage: string | null;
   origem: "bot" | "painel" | "manual";
   mediaUrl: string | null;
-  mediaType: "image" | "audio" | "video" | null;
+  mediaType: "image" | "audio" | "video" | "document" | null;
+  nomeArquivo: string | null;
 };
 
 export type ConversaDetalhe = {
@@ -147,13 +149,13 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
   registrosUnicos.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
 
   const mensagens: Mensagem[] = registrosUnicos.map((r) => {
-    const { texto, mediaUrl, mediaType } = extrairTextoOuMidia(r);
+    const { texto, mediaUrl, mediaType, nomeArquivo } = extrairTextoOuMidia(r);
     const dataIso = new Date(r.messageTimestamp * 1000).toISOString();
 
     if (!r.key.fromMe) {
-      return { id: r.key.id, createdAt: dataIso, userMessage: texto, botMessage: null, origem: "bot", mediaUrl, mediaType };
+      return { id: r.key.id, createdAt: dataIso, userMessage: texto, botMessage: null, origem: "bot", mediaUrl, mediaType, nomeArquivo };
     }
-    return { id: r.key.id, createdAt: dataIso, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType };
+    return { id: r.key.id, createdAt: dataIso, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType, nomeArquivo };
   });
 
   const fotoUrl = await getFotoPerfilComCache(telefone);

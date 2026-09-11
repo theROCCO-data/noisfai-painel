@@ -52,13 +52,10 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
                 </span>
               </div>
             )}
-            {m.userMessage && (
+            {(m.userMessage || (m.mediaUrl && m.mediaType)) && (
               <div className="flex w-fit max-w-[560px] flex-col gap-2 rounded-tl-[20px] rounded-tr-[20px] rounded-br-[20px] rounded-bl-[7px] border border-[var(--color-border-soft)] bg-white/[0.04] px-[18px] py-[14px]">
-                {m.mediaUrl && m.mediaType ? (
-                  <MensagemMidia url={m.mediaUrl} tipo={m.mediaType} />
-                ) : (
-                  <MensagemTexto texto={m.userMessage} />
-                )}
+                {m.mediaUrl && m.mediaType && <MensagemMidia url={m.mediaUrl} tipo={m.mediaType} nomeArquivo={m.nomeArquivo} />}
+                {m.userMessage && <MensagemTexto texto={m.userMessage} />}
                 <span className="self-end text-[10.5px] text-[var(--color-text-muted)]">{formatHora(m.createdAt)}</span>
               </div>
             )}
@@ -77,7 +74,7 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
                       : { borderColor: "rgba(168,85,247,0.3)", backgroundImage: "linear-gradient(172deg, rgba(168,85,247,0.24) 14%, rgba(124,58,237,0.14) 86%)" }
                   }
                 >
-                  {m.mediaUrl && m.mediaType && <MensagemMidia url={m.mediaUrl} tipo={m.mediaType} />}
+                  {m.mediaUrl && m.mediaType && <MensagemMidia url={m.mediaUrl} tipo={m.mediaType} nomeArquivo={m.nomeArquivo} />}
                   {m.botMessage && <MensagemTexto texto={m.botMessage} />}
                   <span className="self-end text-[10.5px] text-[var(--color-text-muted)]">{formatHora(m.createdAt)}</span>
                 </div>
