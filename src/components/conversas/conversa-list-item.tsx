@@ -19,7 +19,6 @@ const BADGE_LABEL: Record<StatusAtendimento, string> = {
 };
 
 export function ConversaListItem({
-  conversationId,
   phone,
   ultimaAtualizacao,
   ultimaMensagem,
@@ -27,7 +26,6 @@ export function ConversaListItem({
   fotoUrl,
   nomeCliente,
 }: {
-  conversationId: string;
   phone: string;
   ultimaAtualizacao: string;
   ultimaMensagem: string;
@@ -36,12 +34,12 @@ export function ConversaListItem({
   nomeCliente: string | null;
 }) {
   const pathname = usePathname();
-  const ativo = pathname === `/conversas/${conversationId}`;
+  const ativo = pathname === `/conversas/${phone}`;
   const label = nomeCliente || formatTelefoneBR(phone);
 
   return (
     <Link
-      href={`/conversas/${conversationId}`}
+      href={`/conversas/${phone}`}
       prefetch={false}
       className={
         ativo

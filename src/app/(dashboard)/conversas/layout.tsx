@@ -57,8 +57,7 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
           ) : (
             conversas.map((c) => (
               <ConversaListItem
-                key={c.conversationId}
-                conversationId={c.conversationId}
+                key={c.phone}
                 phone={c.phone}
                 ultimaAtualizacao={c.ultimaAtualizacao}
                 ultimaMensagem={c.ultimaMensagem}

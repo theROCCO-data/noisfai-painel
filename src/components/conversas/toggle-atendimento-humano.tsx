@@ -7,25 +7,23 @@ import type { StatusAtendimento } from "@/lib/data/status-humano";
 
 export function ToggleAtendimentoHumano({
   telefone,
-  conversationId,
   status,
 }: {
   telefone: string;
-  conversationId: string;
   status: StatusAtendimento;
 }) {
   const [pending, startTransition] = useTransition();
 
   function assumir() {
     startTransition(async () => {
-      const result = await iniciarAtendimentoHumano(telefone, conversationId);
+      const result = await iniciarAtendimentoHumano(telefone);
       if (!result.ok) alert(`Não deu certo: ${result.error}`);
     });
   }
 
   function devolverOuResolver() {
     startTransition(async () => {
-      const result = await finalizarAtendimentoHumano(telefone, conversationId);
+      const result = await finalizarAtendimentoHumano(telefone);
       if (!result.ok) alert(`Não deu certo: ${result.error}`);
     });
   }

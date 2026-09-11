@@ -1,4 +1,6 @@
 import "server-only";
+import { fetchProfilePicUrl, findMessages } from "@/lib/evolution/client";
+import { telefoneParaRemoteJid } from "@/lib/evolution/mapper";
 
 export type PerfilWhatsapp = {
   nome: string | null;
@@ -6,26 +8,20 @@ export type PerfilWhatsapp = {
 };
 
 /**
- * Busca, ao vivo, nome e foto de perfil salvos no WhatsApp — via o workflow
- * ponte "noisfAI - Perfil WhatsApp" no n8n (Evolution API). Só é chamado sob
- * demanda (clique no popup de perfil), nunca como parte do polling da tela
- * de Conversas — senão viraria uma chamada à Evolution API a cada poucos
- * segundos por conversa aberta.
+ * Busca, ao vivo, nome e foto de perfil salvos no WhatsApp — direto na
+ * Evolution API (antes passava por um workflow-ponte no n8n; não precisa
+ * mais, o Painel já fala com a Evolution direto pra ler Conversas). Só é
+ * chamado sob demanda (clique no popup de perfil), nunca como parte do
+ * polling da tela de Conversas.
  */
 export async function getPerfilWhatsapp(telefone: string): Promise<PerfilWhatsapp> {
-  const url = process.env.N8N_PERFIL_WHATSAPP_URL;
-  const token = process.env.N8N_STATUS_HUMANO_TOKEN;
-  if (!url || !token) return { nome: null, fotoUrl: null };
-
   try {
-    const res = await fetch(`${url}?telefone=${encodeURIComponent(telefone)}`, {
-      headers: { "x-painel-token": token },
-      signal: AbortSignal.timeout(8000),
-      cache: "no-store",
-    });
-    if (!res.ok) return { nome: null, fotoUrl: null };
-    const json = await res.json();
-    return { nome: json.nome ?? null, fotoUrl: json.fotoUrl ?? null };
+    const [fotoUrl, pagina] = await Promise.all([
+      fetchProfilePicUrl(telefone),
+      findMessages(telefoneParaRemoteJid(telefone), { tamanhoPagina: 10 }).catch(() => null),
+    ]);
+    const doCliente = pagina?.records.find((r) => !r.key.fromMe);
+    return { nome: doCliente?.pushName ?? null, fotoUrl };
   } catch {
     return { nome: null, fotoUrl: null };
   }

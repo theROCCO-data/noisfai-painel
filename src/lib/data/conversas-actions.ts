@@ -13,7 +13,7 @@ export type IniciarNovaConversaInput = {
   mensagemInicial: string;
 };
 
-export type IniciarNovaConversaResult = ActionResult & { conversationId?: string };
+export type IniciarNovaConversaResult = ActionResult & { telefone?: string };
 
 /**
  * `clientes.telefone` às vezes é salvo sem o DDI 55 (formato usado em
@@ -78,12 +78,12 @@ export async function iniciarNovaConversa(input: IniciarNovaConversaInput): Prom
     if (insertErr) return { ok: false, error: insertErr.message };
   }
 
-  const humano = await iniciarAtendimentoHumano(telefoneWhatsapp, conversationId);
+  const humano = await iniciarAtendimentoHumano(telefoneWhatsapp);
   if (!humano.ok) return humano;
 
-  const envio = await enviarMensagem(telefoneWhatsapp, input.mensagemInicial, conversationId);
+  const envio = await enviarMensagem(telefoneWhatsapp, input.mensagemInicial);
   if (!envio.ok) return envio;
 
   revalidatePath("/conversas");
-  return { ok: true, conversationId };
+  return { ok: true, telefone: telefoneWhatsapp };
 }

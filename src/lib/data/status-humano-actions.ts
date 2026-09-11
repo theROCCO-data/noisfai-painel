@@ -38,33 +38,29 @@ async function registrarHandoff(telefone: string, tipo: "iniciado" | "finalizado
   });
 }
 
-export async function iniciarAtendimentoHumano(telefone: string, conversationId: string): Promise<ActionResult> {
+export async function iniciarAtendimentoHumano(telefone: string): Promise<ActionResult> {
   const result = await chamarWebhookControle(process.env.N8N_INICIAR_HUMANO_URL, telefone);
   if (result.ok) {
     await registrarHandoff(telefone, "iniciado", "humano");
-    revalidatePath(`/conversas/${conversationId}`);
+    revalidatePath(`/conversas/${telefone}`);
     revalidatePath("/conversas");
     revalidatePath("/inicio");
   }
   return result;
 }
 
-export async function finalizarAtendimentoHumano(telefone: string, conversationId: string): Promise<ActionResult> {
+export async function finalizarAtendimentoHumano(telefone: string): Promise<ActionResult> {
   const result = await chamarWebhookControle(process.env.N8N_FINALIZAR_HUMANO_URL, telefone);
   if (result.ok) {
     await registrarHandoff(telefone, "finalizado", null);
-    revalidatePath(`/conversas/${conversationId}`);
+    revalidatePath(`/conversas/${telefone}`);
     revalidatePath("/conversas");
     revalidatePath("/inicio");
   }
   return result;
 }
 
-export async function enviarMensagem(
-  telefone: string,
-  mensagem: string,
-  conversationId: string
-): Promise<ActionResult> {
+export async function enviarMensagem(telefone: string, mensagem: string): Promise<ActionResult> {
   const url = process.env.N8N_ENVIAR_MENSAGEM_URL;
   const token = process.env.N8N_STATUS_HUMANO_TOKEN;
   if (!url || !token) return { ok: false, error: "Integração com o n8n não configurada (.env.local)." };
@@ -99,18 +95,21 @@ export async function enviarMensagem(
     return { ok: false, error: `Falha ao falar com o n8n: ${(e as Error).message}` };
   }
 
-  // registra no histórico da conversa pra aparecer no painel — best-effort:
-  // a mensagem já foi enviada de verdade nesse ponto, então uma falha aqui
-  // não desfaz o envio, só não fica visível na thread até recarregar.
+  // registra em chat_messages (best-effort, igual antes) — a tela de
+  // Conversas não lê mais essa tabela (lê a Evolution direto), mas
+  // dashboard.ts/analises.ts ainda dependem dela por ora.
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
-  await supabase.from("chat_messages").insert({
-    conversation_id: conversationId,
-    bot_message: mensagemAssinada,
-    origem: "painel",
-  });
+  const { data: chat } = await supabase.from("chats").select("conversation_id").eq("phone", telefone).maybeSingle();
+  if (chat?.conversation_id) {
+    await supabase.from("chat_messages").insert({
+      conversation_id: chat.conversation_id,
+      bot_message: mensagemAssinada,
+      origem: "painel",
+    });
+  }
 
-  revalidatePath(`/conversas/${conversationId}`);
+  revalidatePath(`/conversas/${telefone}`);
   revalidatePath("/conversas");
   return { ok: true };
 }

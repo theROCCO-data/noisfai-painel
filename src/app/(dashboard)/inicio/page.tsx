@@ -134,8 +134,8 @@ export default async function InicioPage() {
             <div className="flex w-full flex-1 flex-col gap-2 overflow-y-auto px-4 py-3">
               {conversasComHumano.map((c) => (
                 <Link
-                  key={c.conversationId}
-                  href={`/conversas/${c.conversationId}`}
+                  key={c.telefone}
+                  href={`/conversas/${c.telefone}`}
                   className="flex w-full flex-col gap-1 rounded-[16px] border border-[rgba(168,85,247,0.22)] bg-[#1d1436] px-4 py-3 hover:border-[rgba(168,85,247,0.4)]"
                 >
                   <div className="flex items-center gap-2">

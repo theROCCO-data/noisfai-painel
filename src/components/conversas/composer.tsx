@@ -9,13 +9,11 @@ import type { ModeloMensagem } from "@/lib/data/modelos-mensagem";
 
 export function Composer({
   telefone,
-  conversationId,
   status,
   modelos,
   nomeAtendente,
 }: {
   telefone: string;
-  conversationId: string;
   status: StatusAtendimento;
   modelos: ModeloMensagem[];
   nomeAtendente: string;
@@ -30,7 +28,7 @@ export function Composer({
     setError(null);
     const mensagem = texto;
     startTransition(async () => {
-      const result = await enviarMensagem(telefone, mensagem, conversationId);
+      const result = await enviarMensagem(telefone, mensagem);
       if (result.ok) setTexto("");
       else setError(result.error);
     });

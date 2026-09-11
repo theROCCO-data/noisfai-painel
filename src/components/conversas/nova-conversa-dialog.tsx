@@ -44,10 +44,10 @@ export function NovaConversaDialog({
         nome: String(formData.get("nome") ?? ""),
         mensagemInicial: String(formData.get("mensagemInicial") ?? ""),
       });
-      if (result.ok && result.conversationId) {
+      if (result.ok && result.telefone) {
         setOpen(false);
         toast("Conversa iniciada.");
-        router.push(`/conversas/${result.conversationId}`);
+        router.push(`/conversas/${result.telefone}`);
       } else if (!result.ok) {
         setError(result.error);
       }

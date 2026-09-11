@@ -1,9 +1,39 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { findChats, findMessages, fetchProfilePicUrl, type EvolutionChat, type EvolutionMessageRecord } from "@/lib/evolution/client";
+import { agruparChatsPorTelefone, ehGrupo, extrairTextoOuMidia, inferirOrigem, telefoneParaRemoteJid } from "@/lib/evolution/mapper";
 import { buscarNomesPorTelefones } from "@/lib/data/clientes";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const FOTO_CACHE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Cache de 24h da foto de perfil, em `whatsapp_perfis` — evita bater na
+ * Evolution a cada refresh de 5s enquanto a thread está aberta (substitui o
+ * cache que antes vivia em `chats.foto_url`).
+ */
+async function getFotoPerfilComCache(telefone: string): Promise<string | null> {
+  const supabase = createAdminClient();
+  const { data: cache } = await supabase
+    .from("whatsapp_perfis")
+    .select("foto_url, atualizada_em")
+    .eq("telefone", telefone)
+    .maybeSingle();
+
+  const cacheVelho = !cache || Date.now() - new Date(cache.atualizada_em).getTime() > FOTO_CACHE_MS;
+  if (!cacheVelho) return cache.foto_url;
+
+  const fotoUrl = await fetchProfilePicUrl(telefone).catch(() => null);
+  await supabase.from("whatsapp_perfis").upsert({ telefone, foto_url: fotoUrl, atualizada_em: new Date().toISOString() });
+  return fotoUrl;
+}
+
+async function getGruposDeChatsPorTelefone(): Promise<Map<string, EvolutionChat[]>> {
+  const chats = await findChats();
+  const individuais = chats.filter((c) => !ehGrupo(c.remoteJid));
+  return agruparChatsPorTelefone(individuais);
+}
 
 export type ConversaResumo = {
-  conversationId: string;
   phone: string;
   nomeCliente: string | null;
   ultimaMensagem: string;
@@ -11,47 +41,57 @@ export type ConversaResumo = {
   fotoUrl: string | null;
 };
 
+function rotuloDeMidia(mediaType: "image" | "audio" | "video" | null): string | null {
+  if (mediaType === "image") return "📷 Imagem";
+  if (mediaType === "audio") return "🎤 Áudio";
+  if (mediaType === "video") return "🎥 Vídeo";
+  return null;
+}
+
+/**
+ * Lista de conversas — lê direto da Evolution API (`findChats`), não mais
+ * do Supabase. Elimina a dependência de o n8n replicar cada conversa/
+ * mensagem manualmente em `chats`/`chat_messages` (fonte de bugs recorrentes:
+ * ver histórico de correções de conversation_id nulo, mensagens perdidas).
+ *
+ * O WhatsApp endereça parte dos contatos por um ID de privacidade ("LID")
+ * em vez do telefone — a mesma pessoa pode aparecer em DUAS entradas
+ * separadas de `findChats` (uma pelo telefone, outra pelo LID). Agrupadas
+ * aqui por telefone real antes de montar a lista, senão a mesma conversa
+ * apareceria duplicada.
+ */
 export async function getConversas(): Promise<ConversaResumo[]> {
-  const supabase = createAdminClient();
+  const grupos = await getGruposDeChatsPorTelefone();
+  const telefones = [...grupos.keys()];
+  const nomesPorTelefone = await buscarNomesPorTelefones(telefones);
 
-  const { data: chats, error } = await supabase
-    .from("chats")
-    .select("conversation_id, phone, updated_at, foto_url")
-    .order("updated_at", { ascending: false });
+  const resumos = telefones.map((telefone) => {
+    const chatsDoTelefone = grupos.get(telefone)!;
+    // entre as (até 2) entradas desse telefone, pega a mensagem mais recente de fato.
+    const maisRecente = chatsDoTelefone
+      .map((c) => c.lastMessage)
+      .filter((m): m is EvolutionMessageRecord => !!m)
+      .sort((a, b) => b.messageTimestamp - a.messageTimestamp)[0];
+    const ultima = maisRecente ? extrairTextoOuMidia(maisRecente) : null;
+    const atualizacaoMaisRecente = chatsDoTelefone
+      .map((c) => new Date(c.updatedAt).getTime())
+      .sort((a, b) => b - a)[0];
 
-  if (error) throw new Error(`getConversas: ${error.message}`);
-  if (!chats || chats.length === 0) return [];
+    return {
+      phone: telefone,
+      nomeCliente: nomesPorTelefone.get(telefone) ?? null,
+      ultimaMensagem: ultima?.texto ?? rotuloDeMidia(ultima?.mediaType ?? null) ?? "",
+      ultimaAtualizacao: new Date(atualizacaoMaisRecente).toISOString(),
+      fotoUrl: chatsDoTelefone.find((c) => c.profilePicUrl)?.profilePicUrl ?? null,
+    };
+  });
 
-  const ids = chats.map((c) => c.conversation_id);
-  const { data: msgs, error: msgErr } = await supabase
-    .from("chat_messages")
-    .select("conversation_id, user_message, bot_message, created_at")
-    .in("conversation_id", ids)
-    .order("created_at", { ascending: false });
-
-  if (msgErr) throw new Error(`getConversas (mensagens): ${msgErr.message}`);
-
-  const ultimaPorConversa = new Map<string, string>();
-  for (const m of msgs ?? []) {
-    if (!ultimaPorConversa.has(m.conversation_id)) {
-      ultimaPorConversa.set(m.conversation_id, m.user_message || m.bot_message || "");
-    }
-  }
-
-  const nomesPorTelefone = await buscarNomesPorTelefones(chats.map((c) => c.phone));
-
-  return chats.map((c) => ({
-    conversationId: c.conversation_id,
-    phone: c.phone,
-    nomeCliente: nomesPorTelefone.get(c.phone) ?? null,
-    ultimaMensagem: ultimaPorConversa.get(c.conversation_id) ?? "",
-    ultimaAtualizacao: c.updated_at,
-    fotoUrl: c.foto_url,
-  }));
+  resumos.sort((a, b) => new Date(b.ultimaAtualizacao).getTime() - new Date(a.ultimaAtualizacao).getTime());
+  return resumos;
 }
 
 export type Mensagem = {
-  id: number;
+  id: string;
   createdAt: string;
   userMessage: string | null;
   botMessage: string | null;
@@ -61,73 +101,67 @@ export type Mensagem = {
 };
 
 export type ConversaDetalhe = {
-  conversationId: string;
   phone: string;
   nomeCliente: string | null;
   mensagens: Mensagem[];
   fotoUrl: string | null;
 };
 
-const FOTO_CACHE_MS = 24 * 60 * 60 * 1000;
+const TAMANHO_HISTORICO = 200;
 
-export async function getConversa(conversationId: string): Promise<ConversaDetalhe | null> {
-  const supabase = createAdminClient();
+/**
+ * Detalhe de uma conversa (thread) — lê direto da Evolution API
+ * (`findMessages`). Busca em TODOS os `remoteJid` associados a esse telefone
+ * (telefone real + LID, se houver os dois — ver `getConversas`), mescla e
+ * deduplica por id de mensagem, e ordena cronologicamente. Só busca a página
+ * mais recente (as `TAMANHO_HISTORICO` mensagens mais novas de cada
+ * remoteJid); carregar mensagens mais antigas que isso ainda não está
+ * implementado (fica pra uma fase seguinte, com UI de "carregar mais").
+ */
+export async function getConversa(telefone: string): Promise<ConversaDetalhe | null> {
+  const grupos = await getGruposDeChatsPorTelefone();
+  const chatsDoTelefone = grupos.get(telefone);
+  // fallback: telefone não apareceu em nenhum chat agrupado (ex.: link direto
+  // pra um telefone que nunca conversou) — ainda tenta buscar pelo JID normal.
+  const remoteJids = chatsDoTelefone?.map((c) => c.remoteJid) ?? [telefoneParaRemoteJid(telefone)];
 
-  // .limit(1) em vez de .maybeSingle(): se por qualquer motivo existir mais de
-  // uma linha em chats pro mesmo conversation_id (não deveria, há uma
-  // constraint unique em phone+app pra isso), a tela não quebra — só usa a
-  // primeira.
-  const { data: chatRows, error: chatErr } = await supabase
-    .from("chats")
-    .select("conversation_id, phone, foto_url, foto_atualizada_em")
-    .eq("conversation_id", conversationId)
-    .limit(1);
+  const [paginas, nomesPorTelefone] = await Promise.all([
+    Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO }))),
+    buscarNomesPorTelefones([telefone]),
+  ]);
 
-  if (chatErr) throw new Error(`getConversa: ${chatErr.message}`);
-  const chat = chatRows?.[0];
-  if (!chat) return null;
+  const totalMensagens = paginas.reduce((soma, p) => soma + p.total, 0);
+  if (totalMensagens === 0) return null;
 
-  const { data: msgs, error: msgErr } = await supabase
-    .from("chat_messages")
-    .select("id, created_at, user_message, bot_message, origem, media_url, media_type")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true });
-
-  if (msgErr) throw new Error(`getConversa (mensagens): ${msgErr.message}`);
-
-  const cacheVelho =
-    !chat.foto_atualizada_em || Date.now() - new Date(chat.foto_atualizada_em).getTime() > FOTO_CACHE_MS;
-
-  let fotoUrl = chat.foto_url;
-  if (cacheVelho) {
-    // busca ao vivo é rara (1x/dia por conversa aberta, não a cada refresh de
-    // 4s) — o resultado (mesmo null, se o número não tiver foto) já fica em
-    // cache pra não bater na Evolution API de novo antes do prazo.
-    const { getPerfilWhatsapp } = await import("@/lib/data/perfil-whatsapp");
-    const perfil = await getPerfilWhatsapp(chat.phone);
-    fotoUrl = perfil.fotoUrl;
-    await supabase
-      .from("chats")
-      .update({ foto_url: fotoUrl, foto_atualizada_em: new Date().toISOString() })
-      .eq("conversation_id", conversationId);
+  const vistos = new Set<string>();
+  const registrosUnicos: EvolutionMessageRecord[] = [];
+  for (const pagina of paginas) {
+    for (const r of pagina.records) {
+      if (vistos.has(r.key.id)) continue;
+      vistos.add(r.key.id);
+      registrosUnicos.push(r);
+    }
   }
+  // mescla os remoteJids e ordena cronológica (cada página individual já vem
+  // mais recente -> mais antiga; juntas, a ordem original não vale mais).
+  registrosUnicos.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
 
-  const nomesPorTelefone = await buscarNomesPorTelefones([chat.phone]);
+  const mensagens: Mensagem[] = registrosUnicos.map((r) => {
+    const { texto, mediaUrl, mediaType } = extrairTextoOuMidia(r);
+    const dataIso = new Date(r.messageTimestamp * 1000).toISOString();
+
+    if (!r.key.fromMe) {
+      return { id: r.key.id, createdAt: dataIso, userMessage: texto, botMessage: null, origem: "bot", mediaUrl, mediaType };
+    }
+    return { id: r.key.id, createdAt: dataIso, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType };
+  });
+
+  const fotoUrl = await getFotoPerfilComCache(telefone);
 
   return {
-    conversationId: chat.conversation_id,
-    phone: chat.phone,
-    nomeCliente: nomesPorTelefone.get(chat.phone) ?? null,
+    phone: telefone,
+    nomeCliente: nomesPorTelefone.get(telefone) ?? null,
     fotoUrl,
-    mensagens: (msgs ?? []).map((m) => ({
-      id: m.id,
-      createdAt: m.created_at,
-      userMessage: m.user_message,
-      botMessage: m.bot_message,
-      origem: (m.origem ?? "bot") as "bot" | "painel" | "manual",
-      mediaUrl: m.media_url,
-      mediaType: m.media_type as "image" | "audio" | "video" | null,
-    })),
+    mensagens,
   };
 }
-

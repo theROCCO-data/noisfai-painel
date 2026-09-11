@@ -16,9 +16,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ConversaPage({
   params,
-}: PageProps<"/conversas/[conversationId]">) {
-  const { conversationId } = await params;
-  const conversa = await getConversa(conversationId);
+}: PageProps<"/conversas/[telefone]">) {
+  const { telefone } = await params;
+  const conversa = await getConversa(telefone);
 
   if (!conversa) notFound();
 
@@ -52,7 +52,7 @@ export default async function ConversaPage({
           <PerfilContatoDialog telefone={conversa.phone} />
         </div>
         <div className="w-full shrink-0 lg:w-auto">
-          <ToggleAtendimentoHumano telefone={conversa.phone} conversationId={conversa.conversationId} status={status} />
+          <ToggleAtendimentoHumano telefone={conversa.phone} status={status} />
         </div>
       </header>
 
@@ -78,7 +78,6 @@ export default async function ConversaPage({
 
       <Composer
         telefone={conversa.phone}
-        conversationId={conversa.conversationId}
         status={status}
         modelos={modelos}
         nomeAtendente={staff?.name ?? "Equipe"}
