@@ -94,6 +94,11 @@ export async function getConversas(): Promise<ConversaResumo[]> {
 export type Mensagem = {
   id: string;
   createdAt: string;
+  // qual lado renderiza a bolha — não basta checar userMessage/botMessage
+  // pra decidir isso: uma mídia sem legenda deixa os dois nulos, e sem esse
+  // campo explícito os dois lados achavam que a mídia era deles (mesma
+  // imagem aparecia duplicada, uma vez de cada lado).
+  deCliente: boolean;
   userMessage: string | null;
   botMessage: string | null;
   origem: "bot" | "painel" | "manual";
@@ -158,9 +163,9 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
     const dataIso = new Date(r.messageTimestamp * 1000).toISOString();
 
     if (!r.key.fromMe) {
-      return { id: r.key.id, createdAt: dataIso, userMessage: texto, botMessage: null, origem: "bot", mediaUrl, mediaType, nomeArquivo };
+      return { id: r.key.id, createdAt: dataIso, deCliente: true, userMessage: texto, botMessage: null, origem: "bot", mediaUrl, mediaType, nomeArquivo };
     }
-    return { id: r.key.id, createdAt: dataIso, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType, nomeArquivo };
+    return { id: r.key.id, createdAt: dataIso, deCliente: false, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType, nomeArquivo };
   });
 
   const fotoUrl = await fotoPromise;

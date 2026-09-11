@@ -52,14 +52,14 @@ export function ListaMensagens({ mensagens }: { mensagens: Mensagem[] }) {
                 </span>
               </div>
             )}
-            {(m.userMessage || (m.mediaUrl && m.mediaType)) && (
+            {m.deCliente && (m.userMessage || (m.mediaUrl && m.mediaType)) && (
               <div className="flex w-fit max-w-[560px] flex-col gap-2 rounded-tl-[20px] rounded-tr-[20px] rounded-br-[20px] rounded-bl-[7px] border border-[var(--color-border-soft)] bg-white/[0.04] px-[18px] py-[14px]">
                 {m.mediaUrl && m.mediaType && <MensagemMidia url={m.mediaUrl} tipo={m.mediaType} nomeArquivo={m.nomeArquivo} />}
                 {m.userMessage && <MensagemTexto texto={m.userMessage} />}
                 <span className="self-end text-[10.5px] text-[var(--color-text-muted)]">{formatHora(m.createdAt)}</span>
               </div>
             )}
-            {(m.botMessage || (m.mediaUrl && m.mediaType)) && (
+            {!m.deCliente && (m.botMessage || (m.mediaUrl && m.mediaType)) && (
               <div className="ml-auto flex w-fit max-w-[560px] flex-col items-end gap-1">
                 {m.origem !== "bot" && (
                   <span className="pr-1 text-[10.5px] font-medium text-[var(--color-text-muted)]">
