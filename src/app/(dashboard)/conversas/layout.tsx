@@ -11,13 +11,25 @@ import { ModelosMensagemManagerDialog } from "@/components/conversas/modelos-men
 
 export const dynamic = "force-dynamic";
 
+// Conferir o status humano/IA bate um webhook no n8n por telefone — com a
+// Evolution API agora expondo o histórico real (~900+ conversas, contra a
+// base quebrada do Supabase de antes, que mostrava muito menos), checar TODA
+// a lista a cada abertura/auto-refresh vira uma tempestade de requisições
+// que deixa a tela inteira lenta (foi exatamente o mesmo tipo de incidente
+// já registrado antes, só que agora com a lista completa). Limita a
+// checagem às conversas mais recentes — a lista já vem ordenada por
+// atualização, então é onde o status "humano/atenção" realmente importa;
+// conversas antigas fora desse recorte mostram "IA" por padrão.
+const LIMITE_STATUS_NA_LISTA = 60;
+
 export default async function ConversasLayout({ children }: LayoutProps<"/conversas">) {
   const [conversas, modelos, staff] = await Promise.all([
     getConversas(),
     listModelosMensagem(),
     getCurrentStaffUser(),
   ]);
-  const statusPorTelefone = await getStatusHumanoEmLote(conversas.map((c) => c.phone));
+  const telefonesRecentes = conversas.slice(0, LIMITE_STATUS_NA_LISTA).map((c) => c.phone);
+  const statusPorTelefone = await getStatusHumanoEmLote(telefonesRecentes);
 
   return (
     <ConversasShell

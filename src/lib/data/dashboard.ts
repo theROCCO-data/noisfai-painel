@@ -140,10 +140,20 @@ export type ConversaHumana = {
   ultimaMensagem: string;
 };
 
+// Mesma contenção aplicada em conversas/layout.tsx: checar status humano/IA
+// bate um webhook no n8n por telefone, e fazer isso pra TODA linha de
+// `chats` (que só cresce) numa tela com auto-refresh de 8s sobrecarrega o
+// n8n. Olha só as mais recentes, ordenadas por atualização.
+const LIMITE_STATUS_NO_DASHBOARD = 80;
+
 export async function getConversasComHumano(): Promise<ConversaHumana[]> {
   const supabase = createAdminClient();
 
-  const { data: chats, error } = await supabase.from("chats").select("conversation_id, phone");
+  const { data: chats, error } = await supabase
+    .from("chats")
+    .select("conversation_id, phone")
+    .order("updated_at", { ascending: false })
+    .limit(LIMITE_STATUS_NO_DASHBOARD);
   if (error) throw new Error(`getConversasComHumano: ${error.message}`);
   if (!chats || chats.length === 0) return [];
 

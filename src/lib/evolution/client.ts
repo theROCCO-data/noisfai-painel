@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 const BASE_URL = process.env.EVOLUTION_API_URL;
 const API_KEY = process.env.EVOLUTION_API_KEY;
@@ -54,10 +55,16 @@ async function chamarEvolution<T>(caminho: string, body: unknown): Promise<T> {
  * Lista todos os chats (conversas + grupos) da instância, cada um já com a
  * última mensagem e a foto de perfil embutidas — é a fonte real da lista de
  * Conversas do Painel, sem precisar duplicar nada no Supabase.
+ *
+ * `cache()` (React, per-request) evita buscar essa lista (~970 chats, payload
+ * pesado) duas vezes na mesma renderização — hoje `getConversas()` (lista,
+ * no layout) e `getConversa()` (thread, na page) precisam dela, e as duas
+ * rodam juntas em toda navegação/auto-refresh. Sem isso, cada troca de
+ * conversa batia na Evolution duas vezes só pra montar a lista de chats.
  */
-export async function findChats(): Promise<EvolutionChat[]> {
+export const findChats = cache(async (): Promise<EvolutionChat[]> => {
   return chamarEvolution<EvolutionChat[]>("/chat/findChats", {});
-}
+});
 
 /**
  * Histórico de mensagens de uma conversa, paginado. `offset` é o TAMANHO da
