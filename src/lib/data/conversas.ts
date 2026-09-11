@@ -121,6 +121,11 @@ const TAMANHO_HISTORICO = 200;
  * implementado (fica pra uma fase seguinte, com UI de "carregar mais").
  */
 export async function getConversa(telefone: string): Promise<ConversaDetalhe | null> {
+  // foto não depende do agrupamento LID/telefone nem das mensagens — dispara
+  // já, em paralelo com tudo o resto, em vez de esperar até o fim (era uma
+  // rodada inteira de espera em série a cada troca de conversa).
+  const fotoPromise = getFotoPerfilComCache(telefone);
+
   const grupos = await getGruposDeChatsPorTelefone();
   const chatsDoTelefone = grupos.get(telefone);
   // fallback: telefone não apareceu em nenhum chat agrupado (ex.: link direto
@@ -158,7 +163,7 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
     return { id: r.key.id, createdAt: dataIso, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType, nomeArquivo };
   });
 
-  const fotoUrl = await getFotoPerfilComCache(telefone);
+  const fotoUrl = await fotoPromise;
 
   return {
     phone: telefone,

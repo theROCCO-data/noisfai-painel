@@ -18,15 +18,17 @@ export default async function ConversaPage({
   params,
 }: PageProps<"/conversas/[telefone]">) {
   const { telefone } = await params;
-  const conversa = await getConversa(telefone);
-
-  if (!conversa) notFound();
-
-  const [status, modelos, staff] = await Promise.all([
-    getStatusHumano(conversa.phone),
+  // getStatusHumano só depende do telefone (não do resultado de getConversa)
+  // — rodar em paralelo em vez de esperar a conversa carregar primeiro corta
+  // uma rodada inteira de espera em série a cada troca de conversa.
+  const [conversa, status, modelos, staff] = await Promise.all([
+    getConversa(telefone),
+    getStatusHumano(telefone),
     listModelosMensagem(),
     getCurrentStaffUser(),
   ]);
+
+  if (!conversa) notFound();
   const label = formatTelefoneBR(conversa.phone);
 
   return (

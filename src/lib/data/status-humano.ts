@@ -14,7 +14,11 @@ export type StatusAtendimento = "ia" | "humano" | "atencao";
 // cache() por telefone: a thread aberta confere o próprio status
 // (getStatusHumano) e a lista também confere (getStatusHumanoEmLote) — se o
 // telefone aberto estiver entre os mais recentes, isso deduplica a chamada
-// repetida ao webhook do n8n dentro da mesma renderização.
+// repetida ao webhook do n8n dentro da mesma renderização. Além disso,
+// `next.revalidate` (Data Cache entre requisições) reaproveita a mesma
+// resposta por 3s entre navegações/trocas de conversa diferentes — medido
+// ao vivo, cada chamada a esse webhook custa 350ms-1,4s; não precisa bater
+// de novo a cada clique.
 export const getStatusHumano = cache(async (telefone: string): Promise<StatusAtendimento> => {
   const url = process.env.N8N_STATUS_HUMANO_URL;
   const token = process.env.N8N_STATUS_HUMANO_TOKEN;
@@ -24,7 +28,7 @@ export const getStatusHumano = cache(async (telefone: string): Promise<StatusAte
     const res = await fetch(`${url}?telefone=${encodeURIComponent(telefone)}`, {
       headers: { "x-painel-token": token },
       signal: AbortSignal.timeout(4000),
-      cache: "no-store",
+      next: { revalidate: 3 },
     });
     if (!res.ok) return "ia";
     const json = await res.json();

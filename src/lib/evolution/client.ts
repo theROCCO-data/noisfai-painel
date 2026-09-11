@@ -1,5 +1,5 @@
 import "server-only";
-import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
 const BASE_URL = process.env.EVOLUTION_API_URL;
 const API_KEY = process.env.EVOLUTION_API_KEY;
@@ -54,17 +54,22 @@ async function chamarEvolution<T>(caminho: string, body: unknown): Promise<T> {
 /**
  * Lista todos os chats (conversas + grupos) da instância, cada um já com a
  * última mensagem e a foto de perfil embutidas — é a fonte real da lista de
- * Conversas do Painel, sem precisar duplicar nada no Supabase.
+ * Conversas do Painel, sem precisar duplicar nada no Supabase. Não tem
+ * paginação (a Evolution sempre devolve tudo, ~970 chats hoje, 700ms-1s de
+ * resposta) — sem jeito de pedir menos dado por chamada.
  *
- * `cache()` (React, per-request) evita buscar essa lista (~970 chats, payload
- * pesado) duas vezes na mesma renderização — hoje `getConversas()` (lista,
- * no layout) e `getConversa()` (thread, na page) precisam dela, e as duas
- * rodam juntas em toda navegação/auto-refresh. Sem isso, cada troca de
- * conversa batia na Evolution duas vezes só pra montar a lista de chats.
+ * `unstable_cache` (Data Cache do Next/Vercel, entre requisições — POST não
+ * é cacheado pelo `fetch` nativo do Next, precisa ser explícito assim) com
+ * 5s de revalidação: várias navegações/trocas de conversa dentro da mesma
+ * janela reaproveitam a mesma resposta em vez de bater na Evolution de novo
+ * a cada clique. 5s é bem menor que o auto-refresh (12s), então a lista
+ * ainda fica "quase ao vivo".
  */
-export const findChats = cache(async (): Promise<EvolutionChat[]> => {
-  return chamarEvolution<EvolutionChat[]>("/chat/findChats", {});
-});
+export const findChats = unstable_cache(
+  async (): Promise<EvolutionChat[]> => chamarEvolution<EvolutionChat[]>("/chat/findChats", {}),
+  ["evolution-find-chats"],
+  { revalidate: 5 }
+);
 
 /**
  * Histórico de mensagens de uma conversa, paginado. `offset` é o TAMANHO da
