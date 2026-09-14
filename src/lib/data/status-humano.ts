@@ -16,9 +16,12 @@ export type StatusAtendimento = "ia" | "humano" | "atencao";
 // telefone aberto estiver entre os mais recentes, isso deduplica a chamada
 // repetida ao webhook do n8n dentro da mesma renderização. Além disso,
 // `next.revalidate` (Data Cache entre requisições) reaproveita a mesma
-// resposta por 3s entre navegações/trocas de conversa diferentes — medido
-// ao vivo, cada chamada a esse webhook custa 350ms-1,4s; não precisa bater
-// de novo a cada clique.
+// resposta entre navegações/trocas de conversa diferentes — medido ao vivo,
+// cada chamada a esse webhook custa 350ms-1,4s; não precisa bater de novo a
+// cada clique.
+// 15s (>= o maior intervalo de AutoRefresh em uso, hoje 12s em /conversas) —
+// antes era 3s, mais curto que qualquer polling real, então nunca "pegava"
+// cache: cada refresh da lista refazia a chamada pra CADA telefone visível.
 export const getStatusHumano = cache(async (telefone: string): Promise<StatusAtendimento> => {
   const url = process.env.N8N_STATUS_HUMANO_URL;
   const token = process.env.N8N_STATUS_HUMANO_TOKEN;
@@ -28,7 +31,7 @@ export const getStatusHumano = cache(async (telefone: string): Promise<StatusAte
     const res = await fetch(`${url}?telefone=${encodeURIComponent(telefone)}`, {
       headers: { "x-painel-token": token },
       signal: AbortSignal.timeout(4000),
-      next: { revalidate: 3 },
+      next: { revalidate: 15 },
     });
     if (!res.ok) return "ia";
     const json = await res.json();
