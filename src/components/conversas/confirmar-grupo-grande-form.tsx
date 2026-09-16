@@ -60,7 +60,8 @@ export function ConfirmarGrupoGrandeForm({
         setErro(resultado.error);
         return;
       }
-      const resolvida = await marcarConfirmacaoResolvida(id, telefone);
+      const nomeResponsavel = atendentes.find((a) => a.id === responsavel)?.nome;
+      const resolvida = await marcarConfirmacaoResolvida(id, telefone, nomeResponsavel);
       if (!resolvida.ok) {
         setErro(`Reserva criada, mas não consegui fechar a pendência: ${resolvida.error}`);
         return;
