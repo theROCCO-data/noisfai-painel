@@ -7,8 +7,11 @@ import { getStatusHumano } from "@/lib/data/status-humano";
 import { listModelosMensagem } from "@/lib/data/modelos-mensagem";
 import { getCurrentStaffUser } from "@/lib/auth";
 import { marcarComoLida } from "@/lib/data/leitura";
-import { getConfirmacoesPendentesEmLote, rotuloConfirmacao } from "@/lib/data/confirmacoes-gerente";
+import { getConfirmacoesPendentesEmLote } from "@/lib/data/confirmacoes-gerente";
+import { rotuloConfirmacao, parseDetalheGrupoGrande } from "@/lib/confirmacoes-gerente-shared";
+import { listUsuarios } from "@/lib/data/usuarios";
 import { ConfirmarPendenciaButton } from "@/components/conversas/confirmar-pendencia-button";
+import { ConfirmarGrupoGrandeForm } from "@/components/conversas/confirmar-grupo-grande-form";
 import { ToggleAtendimentoHumano } from "@/components/conversas/toggle-atendimento-humano";
 import { Composer } from "@/components/conversas/composer";
 import { PerfilContatoDialog } from "@/components/conversas/perfil-contato-dialog";
@@ -24,17 +27,21 @@ export default async function ConversaPage({
   // getStatusHumano só depende do telefone (não do resultado de getConversa)
   // — rodar em paralelo em vez de esperar a conversa carregar primeiro corta
   // uma rodada inteira de espera em série a cada troca de conversa.
-  const [conversa, status, modelos, staff, confirmacoes] = await Promise.all([
+  const [conversa, status, modelos, staff, confirmacoes, usuarios] = await Promise.all([
     getConversa(telefone),
     getStatusHumano(telefone),
     listModelosMensagem(),
     getCurrentStaffUser(),
     getConfirmacoesPendentesEmLote([telefone]),
+    listUsuarios(),
   ]);
 
   if (!conversa) notFound();
   const label = formatTelefoneBR(conversa.phone);
   const confirmacaoPendente = confirmacoes.get(telefone) ?? null;
+  const atendentes = usuarios.filter((u) => u.cargo !== "Desenvolvedor");
+  const detalheGrupoGrande =
+    confirmacaoPendente?.tipo === "grupo_grande" ? parseDetalheGrupoGrande(confirmacaoPendente.detalhe) : null;
 
   // abrir a conversa marca como lida -- best-effort, não deve derrubar a
   // tela se falhar (é só uma cortesia visual da lista).
@@ -87,12 +94,21 @@ export default async function ConversaPage({
 
       {confirmacaoPendente && (
         <div className="flex w-full flex-wrap items-center justify-center gap-2 border-b border-[rgba(248,113,113,0.25)] bg-[rgba(248,113,113,0.08)] px-[22px] py-2">
-          <BellRing size={14} className="text-[var(--color-status-red)]" />
+          <BellRing size={14} className="shrink-0 text-[var(--color-status-red)]" />
           <span className="text-[13px] font-medium text-[var(--color-status-red)]">
             Precisa de confirmação do gerente — {rotuloConfirmacao(confirmacaoPendente.tipo)}
-            {confirmacaoPendente.detalhe ? `: ${confirmacaoPendente.detalhe}` : ""}
+            {!detalheGrupoGrande && confirmacaoPendente.detalhe ? `: ${confirmacaoPendente.detalhe}` : ""}
           </span>
-          <ConfirmarPendenciaButton id={confirmacaoPendente.id} telefone={telefone} />
+          {detalheGrupoGrande ? (
+            <ConfirmarGrupoGrandeForm
+              id={confirmacaoPendente.id}
+              telefone={telefone}
+              detalhe={detalheGrupoGrande}
+              atendentes={atendentes}
+            />
+          ) : (
+            <ConfirmarPendenciaButton id={confirmacaoPendente.id} telefone={telefone} />
+          )}
         </div>
       )}
 
