@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
-import { criarReservaManual } from "@/lib/data/reservas-actions";
+import { criarEventoManual } from "@/lib/data/eventos-actions";
 import { marcarConfirmacaoResolvida } from "@/lib/data/confirmacoes-gerente-actions";
 import { toast } from "@/lib/toast";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -11,10 +11,11 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { useEscapeClose } from "@/hooks/use-escape-close";
 import type { DetalheGrupoGrande } from "@/lib/confirmacoes-gerente-shared";
 
-// Horário-palpite só pra não deixar o campo vazio -- o gerente já viu a
-// disponibilidade real antes de abrir esse popup, então isso é só um ponto
-// de partida editável, não uma tentativa de adivinhar certo.
-const HORARIO_PADRAO: Record<"almoco" | "jantar", string> = { almoco: "12:30", jantar: "19:00" };
+// Grupo grande (>10 pessoas) usa o espaço de eventos (2º andar), não os
+// turnos normais de `reservas` -- entra direto em `eventos_reservas`, já
+// como "confirmado" (o gerente só chega até aqui depois de checar a
+// disponibilidade de verdade).
+const HORARIO_PADRAO = "12:30";
 
 export function ConfirmarGrupoGrandeForm({
   id,
@@ -30,7 +31,6 @@ export function ConfirmarGrupoGrandeForm({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
-  const turnoInicial = detalhe.turno ?? "almoco";
 
   useEscapeClose(open, () => setOpen(false));
 
@@ -42,19 +42,20 @@ export function ConfirmarGrupoGrandeForm({
       return;
     }
     startTransition(async () => {
-      const resultado = await criarReservaManual({
+      const resultado = await criarEventoManual({
         nome: String(formData.get("nome") ?? ""),
         telefone,
         cpf: detalhe.cpf ?? "",
         email: detalhe.email ?? "",
+        nomeEvento: String(formData.get("objetivo") || "Grupo grande"),
+        tipo: "grupo_grande",
         data: String(formData.get("data") ?? ""),
         horario: String(formData.get("horario") ?? ""),
-        turno: formData.get("turno") === "jantar" ? "jantar" : "almoco",
         pessoas: Number(formData.get("pessoas") ?? detalhe.pessoas ?? 1),
-        objetivo: String(formData.get("objetivo") ?? ""),
-        canal: "online",
+        valor: "",
         observacao: "",
-        responsavelUserId: responsavel === "chatbot" ? null : responsavel,
+        status: "confirmado",
+        responsavelUserId: responsavel,
       });
       if (!resultado.ok) {
         setErro(resultado.error);
@@ -63,7 +64,7 @@ export function ConfirmarGrupoGrandeForm({
       const nomeResponsavel = atendentes.find((a) => a.id === responsavel)?.nome;
       const resolvida = await marcarConfirmacaoResolvida(id, telefone, nomeResponsavel);
       if (!resolvida.ok) {
-        setErro(`Reserva criada, mas não consegui fechar a pendência: ${resolvida.error}`);
+        setErro(`Evento criado, mas não consegui fechar a pendência: ${resolvida.error}`);
         return;
       }
       setOpen(false);
@@ -92,6 +93,9 @@ export function ConfirmarGrupoGrandeForm({
                 <X size={18} />
               </button>
             </div>
+            <p className="-mt-2 text-[12px] text-[var(--color-text-muted)]">
+              Entra direto em Eventos (2º andar), já como confirmado.
+            </p>
 
             <form action={confirmar} className="flex flex-col gap-3">
               <Field label="Nome do cliente">
@@ -102,34 +106,24 @@ export function ConfirmarGrupoGrandeForm({
                   <DatePicker name="data" defaultValue={detalhe.data ?? ""} required />
                 </Field>
                 <Field label="Horário" className="flex-1">
-                  <MaskedTimeInput name="horario" defaultValue={detalhe.horario ?? HORARIO_PADRAO[turnoInicial]} required />
+                  <MaskedTimeInput name="horario" defaultValue={detalhe.horario ?? HORARIO_PADRAO} required />
                 </Field>
               </div>
               <div className="flex gap-3">
-                <Field label="Turno" className="flex-1">
-                  <CustomSelect
-                    name="turno"
-                    defaultValue={turnoInicial}
-                    options={[
-                      { value: "almoco", label: "Almoço" },
-                      { value: "jantar", label: "Jantar" },
-                    ]}
-                  />
-                </Field>
                 <Field label="Pessoas" className="flex-1">
                   <input
                     name="pessoas"
                     type="number"
-                    min={1}
-                    defaultValue={detalhe.pessoas ?? 1}
+                    min={11}
+                    defaultValue={detalhe.pessoas ?? 11}
                     required
                     className="dialog-input"
                   />
                 </Field>
+                <Field label="Ocasião" className="flex-1">
+                  <input name="objetivo" defaultValue={detalhe.objetivo ?? ""} placeholder="Aniversário, corporativo..." className="dialog-input" />
+                </Field>
               </div>
-              <Field label="Ocasião (opcional)">
-                <input name="objetivo" defaultValue={detalhe.objetivo ?? ""} className="dialog-input" />
-              </Field>
               <Field label="Confirmado por">
                 <CustomSelect
                   name="responsavel"

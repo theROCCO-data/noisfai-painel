@@ -16,6 +16,11 @@ export type CriarEventoInput = {
   pessoas: number;
   valor: string;
   observacao: string;
+  /** default do banco é "pendente" -- só passar "confirmado" quando alguém
+   * (gerente) já validou a disponibilidade de verdade, ex.: ao resolver uma
+   * pendência de "Confirmação do Gerente" (grupo grande). */
+  status?: "pendente" | "confirmado";
+  responsavelUserId?: string | null;
 };
 
 export async function criarEventoManual(input: CriarEventoInput): Promise<ActionResult> {
@@ -55,6 +60,8 @@ export async function criarEventoManual(input: CriarEventoInput): Promise<Action
     pessoas: input.pessoas,
     valor: input.valor ? Number(input.valor) : null,
     observacao: input.observacao || null,
+    ...(input.status ? { status: input.status } : {}),
+    responsavel_user_id: input.responsavelUserId ?? null,
   });
 
   if (error) return { ok: false, error: error.message };
