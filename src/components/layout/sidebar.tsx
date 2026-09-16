@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { signOut } from "@/lib/auth-actions";
 import { LogoUploadButton } from "@/components/layout/logo-upload-button";
+import { WhatsappStatusWidget } from "@/components/layout/whatsapp-status-widget";
+import type { WhatsappStatus } from "@/lib/data/whatsapp-status";
 
 type NavItem = {
   href: string;
@@ -47,6 +49,7 @@ type SidebarProps = {
   conversasAbertas?: number;
   logoUrl?: string | null;
   avatarUrl?: string | null;
+  whatsappStatus: WhatsappStatus;
 };
 
 function initials(name: string) {
@@ -54,7 +57,7 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = null, avatarUrl = null }: SidebarProps) {
+export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = null, avatarUrl = null, whatsappStatus }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -112,7 +115,11 @@ export function Sidebar({ userName, userRole, conversasAbertas = 0, logoUrl = nu
 
       <div className="min-h-px w-px flex-1" />
 
-      <div className="flex w-full items-center gap-[9px] overflow-clip border-t border-[var(--color-border)] px-[8px] pt-[10px]">
+      <div className="w-full border-t border-[var(--color-border)] px-[8px] pt-[10px]">
+        <WhatsappStatusWidget statusInicial={whatsappStatus} />
+      </div>
+
+      <div className="flex w-full items-center gap-[9px] overflow-clip px-[8px] pt-[6px]">
         <Link
           href="/configuracoes"
           prefetch={false}

@@ -121,3 +121,58 @@ export async function fetchProfilePicUrl(telefone: string): Promise<string | nul
     return null;
   }
 }
+
+export type EvolutionInstanceInfo = {
+  estado: "open" | "connecting" | "close";
+  numero: string | null;
+  nomePerfil: string | null;
+  fotoUrl: string | null;
+};
+
+/**
+ * Estado da conexão do WhatsApp + dados do perfil conectado — pra mostrar
+ * no widget do menu lateral (nome/número/foto + "conectado"/"desconectado").
+ * `fetchInstances` é a única chamada que devolve nome/número/foto; `state`
+ * ali é menos confiável em tempo real que `connectionState` dedicado, então
+ * usa os dois juntos.
+ */
+export async function getInstanceInfo(): Promise<EvolutionInstanceInfo> {
+  if (credenciaisFaltando()) {
+    return { estado: "close", numero: null, nomePerfil: null, fotoUrl: null };
+  }
+  const [stateRes, instanceRes] = await Promise.all([
+    fetch(`${BASE_URL}/instance/connectionState/${INSTANCE}`, { headers: { apikey: API_KEY! }, cache: "no-store" }),
+    fetch(`${BASE_URL}/instance/fetchInstances?instanceName=${INSTANCE}`, {
+      headers: { apikey: API_KEY! },
+      cache: "no-store",
+    }),
+  ]);
+
+  const stateData = stateRes.ok ? await stateRes.json() : null;
+  const instancias = instanceRes.ok ? await instanceRes.json() : [];
+  const instancia = Array.isArray(instancias) ? instancias[0] : null;
+
+  return {
+    estado: stateData?.instance?.state ?? instancia?.connectionStatus ?? "close",
+    numero: instancia?.ownerJid ? String(instancia.ownerJid).split("@")[0] : null,
+    nomePerfil: instancia?.profileName ?? null,
+    fotoUrl: instancia?.profilePicUrl ?? null,
+  };
+}
+
+export type EvolutionQrCode = { estado: "open" | "connecting" | "close"; qrCodeBase64: string | null };
+
+/**
+ * Pede o QR code de pareamento. Chamar isso com a instância já conectada é
+ * seguro (confirmado ao vivo, 16/09/2026) — a Evolution só devolve
+ * `{state:"open"}` sem QR nenhum, não derruba a sessão. Só gera QR de
+ * verdade quando o estado real é "close"/"connecting".
+ */
+export async function getQrCode(): Promise<EvolutionQrCode> {
+  if (credenciaisFaltando()) return { estado: "close", qrCodeBase64: null };
+  const res = await fetch(`${BASE_URL}/instance/connect/${INSTANCE}`, { headers: { apikey: API_KEY! }, cache: "no-store" });
+  if (!res.ok) throw new Error(`Evolution API respondeu ${res.status} em /instance/connect`);
+  const data = await res.json();
+  const estado: EvolutionQrCode["estado"] = data?.instance?.state ?? (data?.base64 ? "connecting" : "close");
+  return { estado, qrCodeBase64: data?.base64 ?? null };
+}

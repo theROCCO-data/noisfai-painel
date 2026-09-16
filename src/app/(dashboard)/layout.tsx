@@ -6,16 +6,23 @@ import { BackgroundGlow } from "@/components/layout/background-glow";
 import { Toaster } from "@/components/ui/toaster";
 import { getCurrentStaffUser } from "@/lib/auth";
 import { getConfiguracoes } from "@/lib/data/configuracoes";
+import { getWhatsappStatus } from "@/lib/data/whatsapp-status";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/">) {
-  const [user, config] = await Promise.all([getCurrentStaffUser(), getConfiguracoes()]);
+  const [user, config, whatsappStatus] = await Promise.all([getCurrentStaffUser(), getConfiguracoes(), getWhatsappStatus()]);
   // não deveria acontecer (middleware já barra), mas mantém o TS são e cobre a corrida de sessão expirada
   if (!user) redirect("/login");
 
   return (
     <div className="flex h-screen items-start overflow-hidden bg-[var(--color-bg)]">
       <div className="hidden lg:flex lg:h-full">
-        <Sidebar userName={user.name} userRole={user.role} logoUrl={config.logoUrl} avatarUrl={user.avatarUrl} />
+        <Sidebar
+          userName={user.name}
+          userRole={user.role}
+          logoUrl={config.logoUrl}
+          avatarUrl={user.avatarUrl}
+          whatsappStatus={whatsappStatus}
+        />
       </div>
       <div className="relative flex h-full flex-1 flex-col overflow-hidden">
         <BackgroundGlow />
