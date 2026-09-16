@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/lib/data/reservas-actions";
 import type { EtapaCardapioJH } from "@/lib/data/jantar-harmonizado";
+import { reindexarRegrasJantarHarmonizado } from "@/lib/rag/reindex-jantar-harmonizado";
 
 /** O formulário manda as etapas do cardápio serializadas num único campo JSON — mais simples do que um array de campos FormData. */
 function parseCardapioFormData(formData: FormData): {
@@ -45,6 +46,12 @@ export async function atualizarCardapioJH(id: number, formData: FormData): Promi
     .eq("id", id);
 
   if (error) return { ok: false, error: error.message };
+
+  try {
+    await reindexarRegrasJantarHarmonizado(id);
+  } catch (e) {
+    return { ok: false, error: `Cardápio salvo, mas a reindexação do RAG falhou: ${(e as Error).message}. O bot ainda vai falar a versão antiga das regras de pagamento.` };
+  }
 
   revalidatePath("/jantar-harmonizado");
   return { ok: true };
@@ -132,6 +139,12 @@ export async function atualizarEdicaoJH(formData: FormData): Promise<ActionResul
     .eq("id", id);
 
   if (error) return { ok: false, error: error.message };
+
+  try {
+    await reindexarRegrasJantarHarmonizado(id);
+  } catch (e) {
+    return { ok: false, error: `Edição salva, mas a reindexação do RAG falhou: ${(e as Error).message}. O bot ainda vai falar a versão antiga das regras de pagamento.` };
+  }
 
   if (cotaVagas > 0) {
     const { data: existente } = await supabase
