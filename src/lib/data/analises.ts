@@ -44,7 +44,15 @@ export async function getAnalises(filtro: FiltroAnalises) {
   const reservas = reservasRes.data ?? [];
   const chats = chatsRes.data ?? [];
   const conversasIniciadas = chats.length;
-  const reservasConfirmadas = reservas.filter((r) => r.status === "confirmada").length;
+  // Inconsistência real do sistema: a RPC que o bot usa (reservar_lugares)
+  // grava status "confirmado" (masculino), mas a criação manual pelo Painel
+  // (reservas-actions.ts) grava "confirmada" (feminino) -- dois textos pro
+  // mesmo estado, dependendo de quem criou a reserva. O código anterior só
+  // checava "confirmada", que a RPC do bot nunca escreve -- essa métrica (e
+  // a taxa de conversão dependente dela) ficava sempre zerada na prática,
+  // já que a esmagadora maioria das reservas vem do bot. Achado em
+  // auditoria 16/09/2026, confirmado direto nos dados reais.
+  const reservasConfirmadas = reservas.filter((r) => r.status === "confirmado" || r.status === "confirmada").length;
   const novosClientes = clientesRes.data?.length ?? 0;
   const taxaConversao = conversasIniciadas > 0 ? (reservasConfirmadas / conversasIniciadas) * 100 : 0;
 
