@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import { getConversas, contarNaoLidas } from "@/lib/data/conversas";
 import { getStatusHumanoEmLote } from "@/lib/data/status-humano";
 import { getConfirmacoesPendentesEmLote } from "@/lib/data/confirmacoes-gerente";
@@ -91,10 +90,6 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
                   }
                 />
               </div>
-            </div>
-            <div className="flex h-8 w-full items-center gap-2 rounded-[6px] border border-[#363050] bg-[#1a1729] px-[10px]">
-              <Search size={14} className="text-[var(--color-text-muted)]" />
-              <span className="text-[11.5px] text-[var(--color-text-muted)]">Buscar por nome ou telefone</span>
             </div>
           </div>
 

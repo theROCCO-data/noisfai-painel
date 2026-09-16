@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Search } from "lucide-react";
 import { ConversaListItem } from "@/components/conversas/conversa-list-item";
 import type { ConversaResumo } from "@/lib/data/conversas";
 import type { StatusAtendimento } from "@/lib/data/status-humano";
@@ -22,19 +23,38 @@ type Filtro = "tudo" | "nao-lidas" | "confirmacao";
  */
 export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   const [filtro, setFiltro] = useState<Filtro>("tudo");
+  const [busca, setBusca] = useState("");
 
-  const qtdNaoLidas = itens.filter((i) => i.naoLida).length;
-  const qtdConfirmacao = itens.filter((i) => i.confirmacaoGerenteTipo).length;
+  const termoBusca = busca.trim().toLowerCase();
+  const itensBuscados = termoBusca
+    ? itens.filter(
+        (i) =>
+          (i.nomeCliente ?? "").toLowerCase().includes(termoBusca) || i.phone.replace(/\D/g, "").includes(termoBusca.replace(/\D/g, ""))
+      )
+    : itens;
+
+  const qtdNaoLidas = itensBuscados.filter((i) => i.naoLida).length;
+  const qtdConfirmacao = itensBuscados.filter((i) => i.confirmacaoGerenteTipo).length;
 
   const itensFiltrados =
     filtro === "nao-lidas"
-      ? itens.filter((i) => i.naoLida)
+      ? itensBuscados.filter((i) => i.naoLida)
       : filtro === "confirmacao"
-        ? itens.filter((i) => i.confirmacaoGerenteTipo)
-        : itens;
+        ? itensBuscados.filter((i) => i.confirmacaoGerenteTipo)
+        : itensBuscados;
 
   return (
     <>
+      <div className="flex h-8 w-full shrink-0 items-center gap-2 rounded-[6px] border border-[#363050] bg-[#1a1729] px-[10px] mx-[18px] mb-[12px]" style={{ width: "calc(100% - 36px)" }}>
+        <Search size={14} className="shrink-0 text-[var(--color-text-muted)]" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar por nome ou telefone"
+          className="h-full w-full bg-transparent text-[11.5px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+        />
+      </div>
+
       <div className="sem-scrollbar flex w-full min-h-[32px] shrink-0 items-center gap-1.5 overflow-x-auto px-[18px] pb-[12px]">
         <AbaFiltro label="Tudo" ativo={filtro === "tudo"} onClick={() => setFiltro("tudo")} />
         <AbaFiltro
