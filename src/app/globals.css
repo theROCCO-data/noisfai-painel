@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Esconde a barra de rolagem (continua rolável por toque/arraste) — usado
+   nas abas de filtro de Conversas (Tudo/Não lidas/Confirmação do Gerente),
+   que no mobile não cabem lado a lado; sem isso o navegador desenha uma
+   barra de rolagem horizontal colorida por cima, parecendo um traço
+   borrado em vez de uma rolagem normal. */
+.sem-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sem-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @theme inline {
   --font-sans: var(--font-inter);
   --font-display: var(--font-outfit);

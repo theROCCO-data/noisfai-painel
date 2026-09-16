@@ -35,7 +35,7 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
 
   return (
     <>
-      <div className="flex w-full items-center gap-1.5 overflow-x-auto px-[18px] pb-[12px]">
+      <div className="sem-scrollbar flex w-full items-center gap-1.5 overflow-x-auto px-[18px] pb-[12px]">
         <AbaFiltro label="Tudo" ativo={filtro === "tudo"} onClick={() => setFiltro("tudo")} />
         <AbaFiltro
           label="Não lidas"
