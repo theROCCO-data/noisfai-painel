@@ -36,13 +36,14 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
     <ConversasShell
       lista={
         <>
-          {/* 5s era pesado demais pra essa tela: cada tick busca a lista
-              inteira (~970 chats na Evolution) + confere status de várias
-              conversas + o histórico da conversa aberta. Intervalo maior
-              reduz a carga de fundo, que competia com cliques do usuário
-              (trocar de conversa, iniciar atendimento) por deixarem tudo
-              mais lento. */}
-          <AutoRefresh intervalMs={12000} />
+          {/* O gatilho principal agora é o Realtime (ver auto-refresh.tsx) --
+              mensagem nova atualiza a tela na hora. Esse intervalo é só a
+              rede de segurança pro caso do WebSocket cair; 5s/12s eram
+              pesados demais pra essa tela quando ainda era o ÚNICO gatilho
+              (cada tick busca a lista inteira ~970 chats na Evolution +
+              status de várias conversas + o histórico da conversa aberta),
+              e agora nem precisa mais ser tão frequente. */}
+          <AutoRefresh intervalMs={45000} />
           <div className="flex w-full flex-col gap-3 px-[18px] pb-[14px] pt-[22px]">
             <div className="flex items-center justify-between gap-2">
               <h1 className="font-display text-[22px] font-semibold text-[var(--color-text-primary)]">Conversas</h1>
