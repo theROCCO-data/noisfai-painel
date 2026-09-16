@@ -43,7 +43,7 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
               (cada tick busca a lista inteira ~970 chats na Evolution +
               status de várias conversas + o histórico da conversa aberta),
               e agora nem precisa mais ser tão frequente. */}
-          <AutoRefresh intervalMs={45000} />
+          <AutoRefresh intervalMs={20000} />
           <div className="flex w-full flex-col gap-3 px-[18px] pb-[14px] pt-[22px]">
             <div className="flex items-center justify-between gap-2">
               <h1 className="font-display text-[22px] font-semibold text-[var(--color-text-primary)]">Conversas</h1>
