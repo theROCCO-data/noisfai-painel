@@ -26,10 +26,12 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   const [busca, setBusca] = useState("");
 
   const termoBusca = busca.trim().toLowerCase();
+  const digitosBusca = termoBusca.replace(/\D/g, "");
   const itensBuscados = termoBusca
     ? itens.filter(
         (i) =>
-          (i.nomeCliente ?? "").toLowerCase().includes(termoBusca) || i.phone.replace(/\D/g, "").includes(termoBusca.replace(/\D/g, ""))
+          (i.nomeCliente ?? "").toLowerCase().includes(termoBusca) ||
+          (digitosBusca.length > 0 && i.phone.replace(/\D/g, "").includes(digitosBusca))
       )
     : itens;
 
