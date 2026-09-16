@@ -4,6 +4,7 @@ import { agruparChatsPorTelefone, ehGrupo, extrairTextoOuMidia, inferirOrigem, t
 import { buscarNomesPorTelefones } from "@/lib/data/clientes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUltimasLeituras, LANCAMENTO_NAO_LIDAS } from "@/lib/data/leitura";
+import { registrarLidsConhecidos, getLidsConhecidos } from "@/lib/data/whatsapp-lids";
 
 const FOTO_CACHE_MS = 24 * 60 * 60 * 1000;
 
@@ -179,7 +180,20 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
   const chatsDoTelefone = grupos.get(telefone);
   // fallback: telefone não apareceu em nenhum chat agrupado (ex.: link direto
   // pra um telefone que nunca conversou) — ainda tenta buscar pelo JID normal.
-  const remoteJids = chatsDoTelefone?.map((c) => c.remoteJid) ?? [telefoneParaRemoteJid(telefone)];
+  const remoteJidsAtuais = chatsDoTelefone?.map((c) => c.remoteJid) ?? [telefoneParaRemoteJid(telefone)];
+
+  // registra (best-effort) os LIDs vistos AGORA pra esse telefone — a
+  // Evolution pode "esquecer" essa entrada da lista de chats mais tarde
+  // (achado em auditoria 16/09/2026), então guardamos assim que a vemos.
+  const lidsAtuais = remoteJidsAtuais.filter((jid) => jid.endsWith("@lid")).map((lid) => ({ lid, telefone }));
+  if (lidsAtuais.length > 0) registrarLidsConhecidos(lidsAtuais).catch(() => {});
+
+  // mescla com qualquer LID histórico já visto pra esse telefone, mesmo que
+  // a Evolution não mostre mais aquela entrada na lista atual — sem isso,
+  // mensagens antigas enviadas sob um LID que "sumiu" ficavam inacessíveis
+  // pra sempre, mesmo a Evolution ainda tendo o dado.
+  const lidsHistoricos = await getLidsConhecidos(telefone).catch(() => []);
+  const remoteJids = Array.from(new Set([...remoteJidsAtuais, ...lidsHistoricos]));
 
   const [paginas, nomesPorTelefone] = await Promise.all([
     Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO }))),
