@@ -1,9 +1,11 @@
 import { Search } from "lucide-react";
-import { getConversas } from "@/lib/data/conversas";
+import { getConversas, contarNaoLidas } from "@/lib/data/conversas";
 import { getStatusHumanoEmLote } from "@/lib/data/status-humano";
+import { getConfirmacoesPendentesEmLote } from "@/lib/data/confirmacoes-gerente";
+import { getUltimasLeituras, LANCAMENTO_NAO_LIDAS } from "@/lib/data/leitura";
 import { listModelosMensagem } from "@/lib/data/modelos-mensagem";
 import { getCurrentStaffUser } from "@/lib/auth";
-import { ConversaListItem } from "@/components/conversas/conversa-list-item";
+import { ListaConversas, type ItemConversa } from "@/components/conversas/lista-conversas";
 import { AutoRefresh } from "@/components/conversas/auto-refresh";
 import { ConversasShell } from "@/components/conversas/conversas-shell";
 import { NovaConversaDialog } from "@/components/conversas/nova-conversa-dialog";
@@ -30,7 +32,33 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
     getCurrentStaffUser(),
   ]);
   const telefonesRecentes = conversas.slice(0, LIMITE_STATUS_NA_LISTA).map((c) => c.phone);
-  const statusPorTelefone = await getStatusHumanoEmLote(telefonesRecentes);
+  const todosTelefones = conversas.map((c) => c.phone);
+
+  // confirmações do gerente valem pra lista inteira (não só o topo) -- é só
+  // uma consulta ao Supabase (barata), diferente do status humano/IA que
+  // bate no n8n por telefone. Contagem exata de não lidas, por outro lado,
+  // exige 1 chamada à Evolution por conversa -- só vale a pena pro topo.
+  const naoLidasRecentes = conversas.slice(0, LIMITE_STATUS_NA_LISTA).filter((c) => c.naoLida);
+  const [statusPorTelefone, confirmacoesPorTelefone, leiturasRecentes] = await Promise.all([
+    getStatusHumanoEmLote(telefonesRecentes),
+    getConfirmacoesPendentesEmLote(todosTelefones),
+    getUltimasLeituras(naoLidasRecentes.map((c) => c.phone)),
+  ]);
+  const contagensNaoLidas = await Promise.all(
+    naoLidasRecentes.map(async (c) => {
+      const desde = leiturasRecentes.get(c.phone) ?? LANCAMENTO_NAO_LIDAS;
+      const desdeReal = desde > LANCAMENTO_NAO_LIDAS ? desde : LANCAMENTO_NAO_LIDAS;
+      return [c.phone, await contarNaoLidas(c.remoteJids, desdeReal)] as const;
+    })
+  );
+  const contagemPorTelefone = new Map(contagensNaoLidas);
+
+  const itens: ItemConversa[] = conversas.map((c) => ({
+    ...c,
+    status: statusPorTelefone.get(c.phone) ?? "ia",
+    contagemNaoLidas: contagemPorTelefone.get(c.phone),
+    confirmacaoGerenteTipo: confirmacoesPorTelefone.get(c.phone)?.tipo ?? null,
+  }));
 
   return (
     <ConversasShell
@@ -70,23 +98,7 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
             </div>
           </div>
 
-          {conversas.length === 0 ? (
-            <p className="px-[18px] py-6 text-[13px] text-[var(--color-text-muted)]">
-              Nenhuma conversa registrada ainda.
-            </p>
-          ) : (
-            conversas.map((c) => (
-              <ConversaListItem
-                key={c.phone}
-                phone={c.phone}
-                ultimaAtualizacao={c.ultimaAtualizacao}
-                ultimaMensagem={c.ultimaMensagem}
-                status={statusPorTelefone.get(c.phone) ?? "ia"}
-                fotoUrl={c.fotoUrl}
-                nomeCliente={c.nomeCliente}
-              />
-            ))
-          )}
+          <ListaConversas itens={itens} />
         </>
       }
     >

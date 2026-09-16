@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, UserRound, AlertCircle } from "lucide-react";
+import { ArrowLeft, UserRound, AlertCircle, BellRing } from "lucide-react";
 import { getConversa } from "@/lib/data/conversas";
 import { formatTelefoneBR } from "@/lib/format";
 import { getStatusHumano } from "@/lib/data/status-humano";
 import { listModelosMensagem } from "@/lib/data/modelos-mensagem";
 import { getCurrentStaffUser } from "@/lib/auth";
+import { marcarComoLida } from "@/lib/data/leitura";
+import { getConfirmacoesPendentesEmLote, rotuloConfirmacao } from "@/lib/data/confirmacoes-gerente";
+import { ConfirmarPendenciaButton } from "@/components/conversas/confirmar-pendencia-button";
 import { ToggleAtendimentoHumano } from "@/components/conversas/toggle-atendimento-humano";
 import { Composer } from "@/components/conversas/composer";
 import { PerfilContatoDialog } from "@/components/conversas/perfil-contato-dialog";
@@ -21,15 +24,21 @@ export default async function ConversaPage({
   // getStatusHumano só depende do telefone (não do resultado de getConversa)
   // — rodar em paralelo em vez de esperar a conversa carregar primeiro corta
   // uma rodada inteira de espera em série a cada troca de conversa.
-  const [conversa, status, modelos, staff] = await Promise.all([
+  const [conversa, status, modelos, staff, confirmacoes] = await Promise.all([
     getConversa(telefone),
     getStatusHumano(telefone),
     listModelosMensagem(),
     getCurrentStaffUser(),
+    getConfirmacoesPendentesEmLote([telefone]),
   ]);
 
   if (!conversa) notFound();
   const label = formatTelefoneBR(conversa.phone);
+  const confirmacaoPendente = confirmacoes.get(telefone) ?? null;
+
+  // abrir a conversa marca como lida -- best-effort, não deve derrubar a
+  // tela se falhar (é só uma cortesia visual da lista).
+  await marcarComoLida(telefone).catch(() => {});
 
   return (
     <>
@@ -73,6 +82,17 @@ export default async function ConversaPage({
           <span className="text-[13px] font-medium text-[#d8b4fe]">
             Atendimento com humano — o bot está pausado nessa conversa (volta sozinho em até 1h, ou clique em &quot;Devolver ao bot&quot;)
           </span>
+        </div>
+      )}
+
+      {confirmacaoPendente && (
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 border-b border-[rgba(248,113,113,0.25)] bg-[rgba(248,113,113,0.08)] px-[22px] py-2">
+          <BellRing size={14} className="text-[var(--color-status-red)]" />
+          <span className="text-[13px] font-medium text-[var(--color-status-red)]">
+            Precisa de confirmação do gerente — {rotuloConfirmacao(confirmacaoPendente.tipo)}
+            {confirmacaoPendente.detalhe ? `: ${confirmacaoPendente.detalhe}` : ""}
+          </span>
+          <ConfirmarPendenciaButton id={confirmacaoPendente.id} telefone={telefone} />
         </div>
       )}
 

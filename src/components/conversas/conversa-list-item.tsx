@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { formatTelefoneBR, formatHora } from "@/lib/format";
 import { AvatarConversa } from "@/components/conversas/avatar-conversa";
 import type { StatusAtendimento } from "@/lib/data/status-humano";
+import { rotuloConfirmacao, type TipoConfirmacaoGerente } from "@/lib/confirmacoes-gerente-shared";
 
 const BADGE_ESTILO: Record<StatusAtendimento, string> = {
   ia: "bg-[rgba(96,165,250,0.13)] text-[#60a5fa]",
@@ -25,6 +26,9 @@ export function ConversaListItem({
   status,
   fotoUrl,
   nomeCliente,
+  naoLida = false,
+  contagemNaoLidas,
+  confirmacaoGerenteTipo,
 }: {
   phone: string;
   ultimaAtualizacao: string;
@@ -32,6 +36,10 @@ export function ConversaListItem({
   status: StatusAtendimento;
   fotoUrl: string | null;
   nomeCliente: string | null;
+  naoLida?: boolean;
+  /** número exato só calculado pras conversas visíveis no topo — ver contarNaoLidas */
+  contagemNaoLidas?: number;
+  confirmacaoGerenteTipo?: TipoConfirmacaoGerente | null;
 }) {
   const pathname = usePathname();
   const ativo = pathname === `/conversas/${phone}`;
@@ -60,12 +68,34 @@ export function ConversaListItem({
         <div className="flex w-full items-start">
           <p className="text-[13px] font-semibold text-[var(--color-text-primary)]">{label}</p>
           <div className="h-px min-w-px flex-1" />
-          <span className="text-[11.5px] font-display text-[var(--color-text-muted)]">{formatHora(ultimaAtualizacao)}</span>
+          <span
+            className={`text-[11.5px] font-display ${naoLida ? "font-semibold text-[#4ade80]" : "text-[var(--color-text-muted)]"}`}
+          >
+            {formatHora(ultimaAtualizacao)}
+          </span>
         </div>
-        <p className="line-clamp-1 text-[11.5px] text-[var(--color-text-muted)]">{ultimaMensagem || "—"}</p>
-        <span className={`w-fit rounded-[11px] px-[9px] py-0.5 text-[11px] font-semibold ${BADGE_ESTILO[status]}`}>
-          {BADGE_LABEL[status]}
-        </span>
+        <div className="flex w-full items-center gap-2">
+          <p
+            className={`line-clamp-1 flex-1 text-[11.5px] ${naoLida ? "font-semibold text-[var(--color-text-primary)]" : "text-[var(--color-text-muted)]"}`}
+          >
+            {ultimaMensagem || "—"}
+          </p>
+          {naoLida && (
+            <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#4ade80] px-[5px] text-[10.5px] font-bold text-[#05130a]">
+              {contagemNaoLidas ? (contagemNaoLidas >= 50 ? "50+" : contagemNaoLidas) : ""}
+            </span>
+          )}
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-1.5">
+          <span className={`w-fit rounded-[11px] px-[9px] py-0.5 text-[11px] font-semibold ${BADGE_ESTILO[status]}`}>
+            {BADGE_LABEL[status]}
+          </span>
+          {confirmacaoGerenteTipo && (
+            <span className="w-fit rounded-[11px] bg-[rgba(248,113,113,0.16)] px-[9px] py-0.5 text-[11px] font-semibold text-[var(--color-status-red)]">
+              🔔 {rotuloConfirmacao(confirmacaoGerenteTipo)}
+            </span>
+          )}
+        </div>
       </div>
     </Link>
   );

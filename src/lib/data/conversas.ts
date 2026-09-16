@@ -3,6 +3,7 @@ import { findChats, findMessages, fetchProfilePicUrl, type EvolutionChat, type E
 import { agruparChatsPorTelefone, ehGrupo, extrairTextoOuMidia, inferirOrigem, telefoneParaRemoteJid } from "@/lib/evolution/mapper";
 import { buscarNomesPorTelefones } from "@/lib/data/clientes";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getUltimasLeituras, LANCAMENTO_NAO_LIDAS } from "@/lib/data/leitura";
 
 const FOTO_CACHE_MS = 24 * 60 * 60 * 1000;
 
@@ -39,6 +40,15 @@ export type ConversaResumo = {
   ultimaMensagem: string;
   ultimaAtualizacao: string;
   fotoUrl: string | null;
+  /** remoteJids associados (telefone real + LID, se houver os dois) — usado
+   * pra contar mensagens não lidas sem precisar reagrupar tudo de novo. */
+  remoteJids: string[];
+  /** true quando a última mensagem é do cliente e chegou depois de
+   * `LANCAMENTO_NAO_LIDAS` E depois da última leitura registrada — ver
+   * `src/lib/data/leitura.ts`. Calculado aqui (grátis, já temos o dado);
+   * quem decide o valor exato do contador é `contarNaoLidas`, chamado à
+   * parte só pras conversas visíveis (ver `ConversasLayout`). */
+  naoLida: boolean;
 };
 
 function rotuloDeMidia(mediaType: "image" | "audio" | "video" | "document" | null): string | null {
@@ -64,7 +74,10 @@ function rotuloDeMidia(mediaType: "image" | "audio" | "video" | "document" | nul
 export async function getConversas(): Promise<ConversaResumo[]> {
   const grupos = await getGruposDeChatsPorTelefone();
   const telefones = [...grupos.keys()];
-  const nomesPorTelefone = await buscarNomesPorTelefones(telefones);
+  const [nomesPorTelefone, leituras] = await Promise.all([
+    buscarNomesPorTelefones(telefones),
+    getUltimasLeituras(telefones),
+  ]);
 
   const resumos = telefones.map((telefone) => {
     const chatsDoTelefone = grupos.get(telefone)!;
@@ -78,17 +91,48 @@ export async function getConversas(): Promise<ConversaResumo[]> {
       .map((c) => new Date(c.updatedAt).getTime())
       .sort((a, b) => b - a)[0];
 
+    const timestampUltimaMsg = maisRecente ? maisRecente.messageTimestamp * 1000 : 0;
+    const deCliente = !!maisRecente && !maisRecente.key.fromMe;
+    const lidaEm = leituras.get(telefone)?.getTime() ?? 0;
+    const naoLida = deCliente && timestampUltimaMsg > LANCAMENTO_NAO_LIDAS.getTime() && timestampUltimaMsg > lidaEm;
+
     return {
       phone: telefone,
       nomeCliente: nomesPorTelefone.get(telefone) ?? null,
       ultimaMensagem: ultima?.texto ?? rotuloDeMidia(ultima?.mediaType ?? null) ?? "",
       ultimaAtualizacao: new Date(atualizacaoMaisRecente).toISOString(),
       fotoUrl: chatsDoTelefone.find((c) => c.profilePicUrl)?.profilePicUrl ?? null,
+      remoteJids: chatsDoTelefone.map((c) => c.remoteJid),
+      naoLida,
     };
   });
 
   resumos.sort((a, b) => new Date(b.ultimaAtualizacao).getTime() - new Date(a.ultimaAtualizacao).getTime());
   return resumos;
+}
+
+/**
+ * Conta quantas mensagens do CLIENTE chegaram depois de `desde` — usado só
+ * pro número do badge de não lidas (não pro boolean `naoLida`, que já vem
+ * de graça em `getConversas`). Chamado só pras conversas visíveis no topo
+ * da lista (ver `LIMITE_STATUS_NA_LISTA` em `conversas/layout.tsx`) — fazer
+ * isso pras ~1000 conversas de uma vez seria caro demais (1 chamada à
+ * Evolution por conversa). Conta até `tamanhoPagina` (50) mensagens mais
+ * recentes de cada remoteJid; se estourar isso, mostra só o limite (a UI
+ * exibe como "50+").
+ */
+export async function contarNaoLidas(remoteJids: string[], desde: Date): Promise<number> {
+  const paginas = await Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: 50 })));
+  const vistos = new Set<string>();
+  let total = 0;
+  for (const pagina of paginas) {
+    for (const r of pagina.records) {
+      if (vistos.has(r.key.id)) continue;
+      vistos.add(r.key.id);
+      if (!r.key.fromMe && r.messageTimestamp * 1000 > desde.getTime()) total++;
+    }
+  }
+  return total;
 }
 
 export type Mensagem = {
