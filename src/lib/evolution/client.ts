@@ -1,5 +1,4 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
 
 const BASE_URL = process.env.EVOLUTION_API_URL;
 const API_KEY = process.env.EVOLUTION_API_KEY;
@@ -55,21 +54,22 @@ async function chamarEvolution<T>(caminho: string, body: unknown): Promise<T> {
  * Lista todos os chats (conversas + grupos) da instância, cada um já com a
  * última mensagem e a foto de perfil embutidas — é a fonte real da lista de
  * Conversas do Painel, sem precisar duplicar nada no Supabase. Não tem
- * paginação (a Evolution sempre devolve tudo, ~970 chats hoje, 700ms-1s de
+ * paginação (a Evolution sempre devolve tudo, ~1000 chats hoje, 700ms-1s de
  * resposta) — sem jeito de pedir menos dado por chamada.
  *
- * `unstable_cache` (Data Cache do Next/Vercel, entre requisições — POST não
- * é cacheado pelo `fetch` nativo do Next, precisa ser explícito assim) com
- * 5s de revalidação: várias navegações/trocas de conversa dentro da mesma
- * janela reaproveitam a mesma resposta em vez de bater na Evolution de novo
- * a cada clique. 5s é bem menor que o auto-refresh (12s), então a lista
- * ainda fica "quase ao vivo".
+ * SEM cache (`chamarEvolution` já manda `cache: "no-store"`) — chegou a usar
+ * `unstable_cache` com 5s de revalidação, mas isso travou de verdade em
+ * produção (achado 16/09/2026): a lista ficou mostrando a última mensagem
+ * de ~10h da manhã até as 15h30, horas depois de ter atividade nova de
+ * verdade na Evolution — o Data Cache do Vercel parou de revalidar em
+ * segundo plano e ninguém percebeu (sem erro visível, só dado velho). Pra
+ * uma tela operacional que a equipe usa pra atender cliente em tempo real,
+ * o risco de ficar presa em cache velho é bem pior do que perder ~700ms-1s
+ * de performance por request.
  */
-export const findChats = unstable_cache(
-  async (): Promise<EvolutionChat[]> => chamarEvolution<EvolutionChat[]>("/chat/findChats", {}),
-  ["evolution-find-chats"],
-  { revalidate: 5 }
-);
+export async function findChats(): Promise<EvolutionChat[]> {
+  return chamarEvolution<EvolutionChat[]>("/chat/findChats", {});
+}
 
 /**
  * Histórico de mensagens de uma conversa, paginado. `offset` é o TAMANHO da
