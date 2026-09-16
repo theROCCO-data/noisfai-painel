@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/lib/data/reservas-actions";
+import { normalizarTelefoneWhatsapp, formatosPossiveisDeTelefone } from "@/lib/telefone";
 
 export type CriarEventoInput = {
   nome: string;
@@ -31,12 +32,15 @@ export async function criarEventoManual(input: CriarEventoInput): Promise<Action
   if (!input.data) return { ok: false, error: "Escolha a data do evento." };
   if (input.pessoas < 1) return { ok: false, error: "Número de pessoas inválido." };
 
+  // canônico (com DDI 55) daqui pra frente -- ver formatosPossiveisDeTelefone.
+  const telefone = normalizarTelefoneWhatsapp(input.telefone);
+
   // mesmo padrão de "não sobrescrever cliente já existente" usado em
   // criarReservaManual — telefone é a chave de identidade.
   const { data: clienteExistente, error: buscaErr } = await supabase
     .from("clientes")
     .select("id")
-    .eq("telefone", input.telefone)
+    .in("telefone", formatosPossiveisDeTelefone(input.telefone))
     .maybeSingle();
   if (buscaErr) return { ok: false, error: `Erro ao checar cliente: ${buscaErr.message}` };
 
@@ -44,7 +48,7 @@ export async function criarEventoManual(input: CriarEventoInput): Promise<Action
   if (!clienteId) {
     const { data: novoCliente, error: criarErr } = await supabase
       .from("clientes")
-      .insert({ nome: input.nome, telefone: input.telefone, cpf: input.cpf || null, email: input.email || null })
+      .insert({ nome: input.nome, telefone, cpf: input.cpf || null, email: input.email || null })
       .select("id")
       .single();
     if (criarErr) return { ok: false, error: `Erro ao criar cliente: ${criarErr.message}` };

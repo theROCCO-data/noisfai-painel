@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizarTelefoneWhatsapp, formatosPossiveisDeTelefone } from "@/lib/telefone";
 
 export type CriarReservaInput = {
   nome: string;
@@ -35,6 +36,8 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
  */
 export async function criarReservaManual(input: CriarReservaInput): Promise<ActionResult> {
   const supabase = createAdminClient();
+  // canônico (com DDI 55) daqui pra frente -- ver formatosPossiveisDeTelefone.
+  const telefone = normalizarTelefoneWhatsapp(input.telefone);
 
   const { data: capacidade, error: capErr } = await supabase
     .from("capacidade_turno")
@@ -64,7 +67,7 @@ export async function criarReservaManual(input: CriarReservaInput): Promise<Acti
   const { data: clienteExistente, error: buscaErr } = await supabase
     .from("clientes")
     .select("id")
-    .eq("telefone", input.telefone)
+    .in("telefone", formatosPossiveisDeTelefone(input.telefone))
     .maybeSingle();
   if (buscaErr) return { ok: false, error: `Erro ao checar cliente: ${buscaErr.message}` };
 
@@ -74,7 +77,7 @@ export async function criarReservaManual(input: CriarReservaInput): Promise<Acti
   } else {
     const { data: novoCliente, error: clienteErr } = await supabase
       .from("clientes")
-      .insert({ telefone: input.telefone, nome: input.nome, cpf: input.cpf || null, email: input.email || null })
+      .insert({ telefone, nome: input.nome, cpf: input.cpf || null, email: input.email || null })
       .select("id")
       .single();
     if (clienteErr) return { ok: false, error: `Erro ao gravar cliente: ${clienteErr.message}` };
@@ -84,7 +87,7 @@ export async function criarReservaManual(input: CriarReservaInput): Promise<Acti
   const { error: insertErr } = await supabase.from("reservas").insert({
     cliente_id: clienteId,
     nome: input.nome,
-    telefone: input.telefone,
+    telefone,
     cpf: input.cpf || null,
     email: input.email || null,
     data: input.data,

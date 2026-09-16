@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iniciarAtendimentoHumano } from "@/lib/data/status-humano-actions";
 import { enviarMensagem } from "@/lib/data/status-humano-actions";
 import type { ActionResult } from "@/lib/data/reservas-actions";
+import { normalizarTelefoneWhatsapp, formatosPossiveisDeTelefone } from "@/lib/telefone";
 
 export type IniciarNovaConversaInput = {
   telefone: string;
@@ -14,20 +15,6 @@ export type IniciarNovaConversaInput = {
 };
 
 export type IniciarNovaConversaResult = ActionResult & { telefone?: string };
-
-/**
- * `clientes.telefone` às vezes é salvo sem o DDI 55 (formato usado em
- * `criarReservaManual`/cadastro manual — 10 ou 11 dígitos, DDD+número),
- * mas a Evolution API só aceita o JID completo (`55` + DDD + número). Sem
- * isso, o envio falha com "exists: false" pro número errado (foi o que
- * aconteceu testando com um telefone salvo sem DDI). `chats.phone` e o
- * bot sempre usam o formato completo — aqui normaliza só pra esse lado
- * (WhatsApp), sem mexer no que já está salvo em `clientes.telefone`.
- */
-function normalizarTelefoneWhatsapp(digits: string): string {
-  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
-  return digits;
-}
 
 /**
  * Abre uma conversa pelo Painel (não pelo bot) — pra falar primeiro com um
@@ -48,15 +35,16 @@ export async function iniciarNovaConversa(input: IniciarNovaConversaInput): Prom
     // Só cadastra cliente novo se esse telefone ainda não existir — não
     // sobrescreve o nome de quem já está cadastrado (mesmo motivo de
     // `criarReservaManual`: telefone é a chave de identidade, não o nome).
-    // Telefone tal como digitado/pré-preenchido — não o normalizado — pra
-    // casar com o que já está em `clientes` (que pode estar guardado sem o DDI).
+    // Verifica os dois formatos possíveis (com/sem DDI 55) pra não criar
+    // duplicado de um cliente que já existe via bot/WhatsApp -- ver
+    // `formatosPossiveisDeTelefone`.
     const { data: clienteExistente } = await supabase
       .from("clientes")
       .select("id")
-      .eq("telefone", telefone)
+      .in("telefone", formatosPossiveisDeTelefone(telefone))
       .maybeSingle();
     if (!clienteExistente) {
-      await supabase.from("clientes").insert({ telefone, nome: input.nome.trim() });
+      await supabase.from("clientes").insert({ telefone: telefoneWhatsapp, nome: input.nome.trim() });
     }
   }
 
