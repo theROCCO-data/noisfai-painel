@@ -71,6 +71,21 @@ export async function findChats(): Promise<EvolutionChat[]> {
   return chamarEvolution<EvolutionChat[]>("/chat/findChats", {});
 }
 
+export type EvolutionContact = { remoteJid: string; pushName: string | null };
+
+/**
+ * Nome que a própria pessoa configurou no WhatsApp, por `remoteJid` (telefone
+ * OU lid) — mais confiável que tirar de `findChats`/`lastMessage`: o
+ * `pushName` no nível do chat quase nunca vem preenchido (13 de 1083 chats,
+ * medido ao vivo 17/09/2026), e o da ÚLTIMA mensagem vem "Você" (o dono da
+ * instância) sempre que o BOT respondeu por último. `findContacts` devolve
+ * o pushName de cada contato de verdade, sem essa armadilha — usado como
+ * fallback de nome na lista/conversa quando não tem cadastro em `clientes`.
+ */
+export async function findContacts(): Promise<EvolutionContact[]> {
+  return chamarEvolution<EvolutionContact[]>("/chat/findContacts", {});
+}
+
 /**
  * Histórico de mensagens de uma conversa, paginado. `offset` é o TAMANHO da
  * página (nome confuso da própria API — confirmado testando ao vivo: com

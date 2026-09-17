@@ -1,5 +1,5 @@
 import "server-only";
-import { findChats, findMessages, fetchProfilePicUrl, type EvolutionChat, type EvolutionMessageRecord } from "@/lib/evolution/client";
+import { findChats, findMessages, findContacts, fetchProfilePicUrl, type EvolutionChat, type EvolutionMessageRecord } from "@/lib/evolution/client";
 import { agruparChatsPorTelefone, ehGrupo, extrairTextoOuMidia, inferirOrigem, telefoneParaRemoteJid } from "@/lib/evolution/mapper";
 import { buscarNomesPorTelefones } from "@/lib/data/clientes";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -124,10 +124,12 @@ function rotuloDeMidia(mediaType: "image" | "audio" | "video" | "document" | nul
 export async function getConversas(): Promise<ConversaResumo[]> {
   const grupos = await getGruposDeChatsPorTelefone();
   const telefones = [...grupos.keys()];
-  const [nomesPorTelefone, leituras] = await Promise.all([
+  const [nomesPorTelefone, leituras, contatos] = await Promise.all([
     buscarNomesPorTelefones(telefones),
     getUltimasLeituras(telefones),
+    findContacts(),
   ]);
+  const pushNamePorRemoteJid = new Map(contatos.map((c) => [c.remoteJid, c.pushName?.trim() || null]));
 
   const resumos = telefones.map((telefone) => {
     const chatsDoTelefone = grupos.get(telefone)!;
@@ -147,13 +149,11 @@ export async function getConversas(): Promise<ConversaResumo[]> {
     const naoLida = deCliente && timestampUltimaMsg > LANCAMENTO_NAO_LIDAS.getTime() && timestampUltimaMsg > lidaEm;
 
     // cadastro no `clientes` (nome que ele deu numa reserva) tem prioridade
-    // por ser mais confiável, mas cai pro `pushName` do WhatsApp (nome que a
-    // própria pessoa configurou lá) em vez de mostrar só o telefone puro --
-    // cobre muito mais gente do que só quem já completou uma reserva. Só usa
-    // quando a mensagem mais recente é DO CLIENTE: quando o bot responde por
-    // último, `pushName` vem como "Você" (o dono da instância), não o
-    // cliente -- achado 17/09/2026 testando ao vivo, quase virou bug.
-    const nomePush = deCliente ? maisRecente!.pushName?.trim() || null : null;
+    // por ser mais confiável, mas cai pro `pushName` do contato no WhatsApp
+    // (`findContacts`, por remoteJid -- telefone OU lid) em vez de mostrar só
+    // o telefone puro -- cobre muito mais gente do que só quem já completou
+    // uma reserva.
+    const nomePush = chatsDoTelefone.map((c) => pushNamePorRemoteJid.get(c.remoteJid)).find((n) => !!n) ?? null;
 
     return {
       phone: telefone,
@@ -253,9 +253,10 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
   const lidsHistoricos = await getLidsConhecidos(telefone).catch(() => []);
   const remoteJids = Array.from(new Set([...remoteJidsAtuais, ...lidsHistoricos]));
 
-  const [paginas, nomesPorTelefone] = await Promise.all([
+  const [paginas, nomesPorTelefone, contatos] = await Promise.all([
     Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO }))),
     buscarNomesPorTelefones([telefone]),
+    findContacts(),
   ]);
 
   const totalMensagens = paginas.reduce((soma, p) => soma + p.total, 0);
@@ -286,11 +287,11 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
 
   const fotoUrl = await fotoPromise;
 
-  // mesmo fallback de `getConversas` -- pushName da mensagem mais recente DO
-  // CLIENTE (nunca a última mensagem no geral, que pode ser do bot e vir com
-  // pushName "Você", o dono da instância).
-  const ultimaDoCliente = [...registrosUnicos].reverse().find((r) => !r.key.fromMe);
-  const nomePush = ultimaDoCliente?.pushName?.trim() || null;
+  // mesmo fallback de `getConversas` -- pushName do contato de verdade
+  // (`findContacts`, por remoteJid), não da última mensagem (essa pode ser
+  // do bot e vir com pushName "Você", o dono da instância).
+  const pushNamePorRemoteJid = new Map(contatos.map((c) => [c.remoteJid, c.pushName?.trim() || null]));
+  const nomePush = remoteJids.map((jid) => pushNamePorRemoteJid.get(jid)).find((n) => !!n) ?? null;
 
   return {
     phone: telefone,
