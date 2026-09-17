@@ -146,9 +146,18 @@ export async function getConversas(): Promise<ConversaResumo[]> {
     const lidaEm = leituras.get(telefone)?.getTime() ?? 0;
     const naoLida = deCliente && timestampUltimaMsg > LANCAMENTO_NAO_LIDAS.getTime() && timestampUltimaMsg > lidaEm;
 
+    // cadastro no `clientes` (nome que ele deu numa reserva) tem prioridade
+    // por ser mais confiável, mas cai pro `pushName` do WhatsApp (nome que a
+    // própria pessoa configurou lá) em vez de mostrar só o telefone puro --
+    // cobre muito mais gente do que só quem já completou uma reserva. Só usa
+    // quando a mensagem mais recente é DO CLIENTE: quando o bot responde por
+    // último, `pushName` vem como "Você" (o dono da instância), não o
+    // cliente -- achado 17/09/2026 testando ao vivo, quase virou bug.
+    const nomePush = deCliente ? maisRecente!.pushName?.trim() || null : null;
+
     return {
       phone: telefone,
-      nomeCliente: nomesPorTelefone.get(telefone) ?? null,
+      nomeCliente: nomesPorTelefone.get(telefone) ?? nomePush,
       ultimaMensagem: ultima?.texto ?? rotuloDeMidia(ultima?.mediaType ?? null) ?? "",
       ultimaAtualizacao: new Date(atualizacaoMaisRecente).toISOString(),
       fotoUrl: chatsDoTelefone.find((c) => c.profilePicUrl)?.profilePicUrl ?? null,
@@ -277,9 +286,15 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
 
   const fotoUrl = await fotoPromise;
 
+  // mesmo fallback de `getConversas` -- pushName da mensagem mais recente DO
+  // CLIENTE (nunca a última mensagem no geral, que pode ser do bot e vir com
+  // pushName "Você", o dono da instância).
+  const ultimaDoCliente = [...registrosUnicos].reverse().find((r) => !r.key.fromMe);
+  const nomePush = ultimaDoCliente?.pushName?.trim() || null;
+
   return {
     phone: telefone,
-    nomeCliente: nomesPorTelefone.get(telefone) ?? null,
+    nomeCliente: nomesPorTelefone.get(telefone) ?? nomePush,
     fotoUrl,
     mensagens,
   };
