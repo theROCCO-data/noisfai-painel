@@ -1,4 +1,4 @@
-import { getConversas, contarNaoLidas } from "@/lib/data/conversas";
+import { getConversas, contarNaoLidas, getFotosPerfilEmLote } from "@/lib/data/conversas";
 import { getStatusHumanoEmLote } from "@/lib/data/status-humano";
 import { getConfirmacoesPendentesEmLote } from "@/lib/data/confirmacoes-gerente";
 import { getUltimasLeituras, LANCAMENTO_NAO_LIDAS } from "@/lib/data/leitura";
@@ -38,10 +38,18 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
   // bate no n8n por telefone. Contagem exata de não lidas, por outro lado,
   // exige 1 chamada à Evolution por conversa -- só vale a pena pro topo.
   const naoLidasRecentes = conversas.slice(0, LIMITE_STATUS_NA_LISTA).filter((c) => c.naoLida);
-  const [statusPorTelefone, confirmacoesPorTelefone, leiturasRecentes] = await Promise.all([
+  // só busca foto de quem a Evolution não já mandou de graça no findChats
+  // (~92% dos casos, ver getFotosPerfilEmLote) -- e só entre os recentes,
+  // mesmo recorte do status humano/IA, por ser 1 chamada à Evolution por número.
+  const telefonesSemFoto = conversas
+    .slice(0, LIMITE_STATUS_NA_LISTA)
+    .filter((c) => !c.fotoUrl)
+    .map((c) => c.phone);
+  const [statusPorTelefone, confirmacoesPorTelefone, leiturasRecentes, fotosPorTelefone] = await Promise.all([
     getStatusHumanoEmLote(telefonesRecentes),
     getConfirmacoesPendentesEmLote(todosTelefones),
     getUltimasLeituras(naoLidasRecentes.map((c) => c.phone)),
+    getFotosPerfilEmLote(telefonesSemFoto),
   ]);
   const contagensNaoLidas = await Promise.all(
     naoLidasRecentes.map(async (c) => {
@@ -54,6 +62,7 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
 
   const itens: ItemConversa[] = conversas.map((c) => ({
     ...c,
+    fotoUrl: c.fotoUrl ?? fotosPorTelefone.get(c.phone) ?? null,
     status: statusPorTelefone.get(c.phone) ?? "ia",
     contagemNaoLidas: contagemPorTelefone.get(c.phone),
     confirmacaoGerenteTipo: confirmacoesPorTelefone.get(c.phone)?.tipo ?? null,

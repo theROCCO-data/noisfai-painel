@@ -29,6 +29,55 @@ async function getFotoPerfilComCache(telefone: string): Promise<string | null> {
   return fotoUrl;
 }
 
+// nº de chamadas simultâneas à Evolution ao buscar fotos em lote -- não é
+// grátis (uma requisição HTTP por telefone), então não dispara tudo de uma
+// vez nem tenta cobrir a lista inteira (~1000 conversas), só quem está
+// realmente visível (ver LIMITE_STATUS_NA_LISTA em conversas/layout.tsx).
+const CONCORRENCIA_FOTO_PERFIL = 8;
+
+/**
+ * Mesmo cache de `getFotoPerfilComCache`, só que em lote — pra preencher a
+ * FOTO NA LISTA de conversas, não só na conversa aberta. Achado 17/09/2026:
+ * só ~8% dos chats vêm com `profilePicUrl` já embutido no retorno da
+ * Evolution (`findChats`) — os outros 92% ficavam sempre com iniciais na
+ * lista, mesmo tendo foto de perfil de verdade (a Evolution só devolve isso
+ * de graça quando já tem em cache interno dela; senão precisa pedir
+ * explicitamente via `fetchProfilePicUrl`, uma chamada por número).
+ */
+export async function getFotosPerfilEmLote(telefones: string[]): Promise<Map<string, string | null>> {
+  if (telefones.length === 0) return new Map();
+  const supabase = createAdminClient();
+  const { data: cache } = await supabase
+    .from("whatsapp_perfis")
+    .select("telefone, foto_url, atualizada_em")
+    .in("telefone", telefones);
+
+  const cachePorTelefone = new Map((cache ?? []).map((c) => [c.telefone, c]));
+  const resultado = new Map<string, string | null>();
+  const paraBuscar: string[] = [];
+
+  for (const telefone of telefones) {
+    const c = cachePorTelefone.get(telefone);
+    const cacheVelho = !c || Date.now() - new Date(c.atualizada_em).getTime() > FOTO_CACHE_MS;
+    if (cacheVelho) paraBuscar.push(telefone);
+    else resultado.set(telefone, c.foto_url);
+  }
+
+  for (let i = 0; i < paraBuscar.length; i += CONCORRENCIA_FOTO_PERFIL) {
+    const lote = paraBuscar.slice(i, i + CONCORRENCIA_FOTO_PERFIL);
+    const fotos = await Promise.all(lote.map((t) => fetchProfilePicUrl(t).catch(() => null)));
+    lote.forEach((t, idx) => resultado.set(t, fotos[idx]));
+  }
+
+  if (paraBuscar.length > 0) {
+    await supabase
+      .from("whatsapp_perfis")
+      .upsert(paraBuscar.map((t) => ({ telefone: t, foto_url: resultado.get(t) ?? null, atualizada_em: new Date().toISOString() })));
+  }
+
+  return resultado;
+}
+
 async function getGruposDeChatsPorTelefone(): Promise<Map<string, EvolutionChat[]>> {
   const chats = await findChats();
   const individuais = chats.filter((c) => !ehGrupo(c.remoteJid));
