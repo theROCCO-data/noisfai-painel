@@ -360,6 +360,52 @@ export async function editarReservaManualJH(reservaId: number, formData: FormDat
   return { ok: true };
 }
 
+/**
+ * Cancela uma reserva/pré-reserva do Jantar Harmonizado e devolve a vaga em
+ * `capacidade_turno` (pool 'jantar_harmonizado') -- não existia nenhum jeito
+ * de excluir/cancelar uma reserva dessa tela, só editar (achado 17/09/2026).
+ */
+export async function cancelarReservaJH(reservaId: number, motivo?: string): Promise<ActionResult> {
+  const supabase = createAdminClient();
+
+  const { data: reserva, error: reservaErr } = await supabase
+    .from("reservas")
+    .select("id, data, pessoas, status")
+    .eq("id", reservaId)
+    .maybeSingle();
+  if (reservaErr) return { ok: false, error: reservaErr.message };
+  if (!reserva) return { ok: false, error: "Reserva não encontrada." };
+  if (reserva.status === "cancelado") return { ok: true };
+
+  const { data: capacidade, error: capErr } = await supabase
+    .from("capacidade_turno")
+    .select("id, reservado, disponivel_atual")
+    .eq("data", reserva.data)
+    .eq("turno", "jantar_harmonizado")
+    .maybeSingle();
+  if (capErr) return { ok: false, error: `Erro ao checar capacidade: ${capErr.message}` };
+  if (capacidade) {
+    const { error: capUpdateErr } = await supabase
+      .from("capacidade_turno")
+      .update({
+        reservado: Math.max(0, capacidade.reservado - reserva.pessoas),
+        disponivel_atual: capacidade.disponivel_atual + reserva.pessoas,
+      })
+      .eq("id", capacidade.id);
+    if (capUpdateErr) return { ok: false, error: `Erro ao devolver vaga: ${capUpdateErr.message}` };
+  }
+
+  const update: Record<string, unknown> = { status: "cancelado", origem_alteracao: "painel" };
+  if (motivo?.trim()) update.motivo_cancelamento = motivo.trim();
+
+  const { error: updateErr } = await supabase.from("reservas").update(update).eq("id", reservaId);
+  if (updateErr) return { ok: false, error: updateErr.message };
+
+  revalidatePath("/jantar-harmonizado");
+  revalidatePath("/inicio");
+  return { ok: true };
+}
+
 export type ReservaEdicaoJH = {
   id: number;
   nome: string;

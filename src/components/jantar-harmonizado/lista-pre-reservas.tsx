@@ -2,6 +2,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { TabelaRedimensionavel, Coluna } from "@/components/ui/tabela-redimensionavel";
 import { ConfirmarPagamentoButton } from "@/components/jantar-harmonizado/confirmar-pagamento-button";
 import { EditarReservaJHDialog } from "@/components/jantar-harmonizado/editar-reserva-jh-dialog";
+import { CancelarReservaJHButton } from "@/components/jantar-harmonizado/cancelar-reserva-jh-button";
 import type { PreReservaJH } from "@/lib/data/jantar-harmonizado";
 
 function formatData(d: string) {
@@ -63,6 +64,7 @@ export function ListaPreReservas({
                 <div className="flex items-center gap-1">
                   {mostrarConfirmar && p.comprovanteUrl && <ConfirmarPagamentoButton reservaId={p.id} />}
                   <EditarReservaJHDialog reserva={p} />
+                  <CancelarReservaJHButton reservaId={p.id} nome={p.nome} />
                 </div>
               </div>
             </div>
@@ -126,6 +128,7 @@ export function ListaPreReservas({
                 <Coluna id="acoes" defaultWidth={170} className="flex items-center gap-1">
                   {mostrarConfirmar && p.comprovanteUrl && <ConfirmarPagamentoButton reservaId={p.id} />}
                   <EditarReservaJHDialog reserva={p} />
+                  <CancelarReservaJHButton reservaId={p.id} nome={p.nome} />
                 </Coluna>
               </div>
             ))
