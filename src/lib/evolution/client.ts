@@ -191,3 +191,14 @@ export async function getQrCode(): Promise<EvolutionQrCode> {
   const estado: EvolutionQrCode["estado"] = data?.instance?.state ?? (data?.base64 ? "connecting" : "close");
   return { estado, qrCodeBase64: data?.base64 ?? null };
 }
+
+/** Desconecta o WhatsApp da instância (logout) — a partir daí, `getInstanceInfo` volta "close" e `getQrCode` passa a devolver um QR novo pra reconectar. */
+export async function logoutInstance(): Promise<void> {
+  if (credenciaisFaltando()) return;
+  const res = await fetch(`${BASE_URL}/instance/logout/${INSTANCE}`, {
+    method: "DELETE",
+    headers: { apikey: API_KEY! },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Evolution API respondeu ${res.status} em /instance/logout`);
+}
