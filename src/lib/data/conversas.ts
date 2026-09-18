@@ -352,26 +352,33 @@ async function getConversaDoEvolution(
  * disparam todos em paralelo desde o início.
  */
 export async function getConversa(telefone: string): Promise<ConversaDetalhe | null> {
-  const [fotoUrl, nomesPorTelefone, lidsHistoricos, mensagensBanco] = await Promise.all([
+  const telefoneJid = telefoneParaRemoteJid(telefone);
+  // o pushName de fallback (contato do telefone na Evolution) é buscado JUNTO
+  // no batch, não em série depois -- assim não soma ~400ms a cada abertura de
+  // conversa de quem não é cliente cadastrado (que é a maioria). Como roda em
+  // paralelo com as leituras do banco, não custa tempo de parede a mais; só é
+  // de fato usado se o cadastro em `clientes` não tiver o nome.
+  const [fotoUrl, nomesPorTelefone, lidsHistoricos, mensagensBanco, contatoTelefone] = await Promise.all([
     getFotoPerfilComCache(telefone).catch(() => null),
     buscarNomesPorTelefones([telefone]),
     getLidsConhecidos(telefone).catch(() => []),
     getMensagensDoBanco(telefone).catch(() => null),
+    findContatoPorRemoteJid(telefoneJid).catch(() => null),
   ]);
 
-  const remoteJids = Array.from(new Set([telefoneParaRemoteJid(telefone), ...lidsHistoricos]));
+  const remoteJids = Array.from(new Set([telefoneJid, ...lidsHistoricos]));
 
   // banco vazio pra esse telefone -> fallback pro comportamento antigo (ao vivo).
   if (!mensagensBanco || mensagensBanco.length === 0) {
     return getConversaDoEvolution(telefone, { fotoUrl, nomesPorTelefone, remoteJids });
   }
 
-  // nome de fallback só quando NÃO é cliente cadastrado (o banco não guarda
-  // pushName): uma consulta direcionada por remoteJid (0/1 contato), bem mais
-  // barata que o findContacts global. Só paga esse custo quem não tem cadastro.
-  let nomeCliente = nomesPorTelefone.get(telefone) ?? null;
-  if (!nomeCliente) {
-    const contatos = await Promise.all(remoteJids.map((jid) => findContatoPorRemoteJid(jid).catch(() => null)));
+  // prioridade: cadastro em `clientes` > pushName do contato do telefone.
+  let nomeCliente = nomesPorTelefone.get(telefone) ?? contatoTelefone?.pushName?.trim() ?? null;
+  // só se ainda não achou E existem LIDs históricos (contato pode estar sob o
+  // LID, não sob o telefone) -- caso raro, aí sim uma busca extra.
+  if (!nomeCliente && lidsHistoricos.length > 0) {
+    const contatos = await Promise.all(lidsHistoricos.map((jid) => findContatoPorRemoteJid(jid).catch(() => null)));
     nomeCliente = contatos.map((c) => c?.pushName?.trim()).find((n) => !!n) ?? null;
   }
 
