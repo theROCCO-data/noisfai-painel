@@ -87,6 +87,18 @@ export async function findContacts(): Promise<EvolutionContact[]> {
 }
 
 /**
+ * Contato de UM remoteJid específico (`{ where: { remoteJid } }`) — a
+ * Evolution devolve só o que casa (confirmado ao vivo: array de 0 ou 1). Bem
+ * mais barato que `findContacts()` (que traz TODOS os ~milhares de contatos):
+ * usado no detalhe da conversa, lida do banco, só pra resolver o pushName de
+ * fallback de quem não está cadastrado em `clientes`.
+ */
+export async function findContatoPorRemoteJid(remoteJid: string): Promise<EvolutionContact | null> {
+  const contatos = await chamarEvolution<EvolutionContact[]>("/chat/findContacts", { where: { remoteJid } });
+  return contatos.find((c) => c.pushName?.trim()) ?? contatos[0] ?? null;
+}
+
+/**
  * Histórico de mensagens de uma conversa, paginado. `offset` é o TAMANHO da
  * página (nome confuso da própria API — confirmado testando ao vivo: com
  * offset=N cada página tem N registros, `page` escolhe qual página). Vem

@@ -1,6 +1,6 @@
 import "server-only";
-import { findChats, findMessages, findContacts, fetchProfilePicUrl, type EvolutionChat, type EvolutionMessageRecord } from "@/lib/evolution/client";
-import { agruparChatsPorTelefone, ehGrupo, extrairTextoOuMidia, inferirOrigem, telefoneParaRemoteJid } from "@/lib/evolution/mapper";
+import { findChats, findMessages, findContacts, findContatoPorRemoteJid, fetchProfilePicUrl, type EvolutionChat, type EvolutionMessageRecord } from "@/lib/evolution/client";
+import { agruparChatsPorTelefone, ehGrupo, extrairTextoOuMidia, inferirOrigem, telefoneParaRemoteJid, urlProxyMidiaPorChave } from "@/lib/evolution/mapper";
 import { buscarNomesPorTelefones } from "@/lib/data/clientes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUltimasLeituras, LANCAMENTO_NAO_LIDAS } from "@/lib/data/leitura";
@@ -234,30 +234,83 @@ export type ConversaDetalhe = {
 
 const TAMANHO_HISTORICO = 200;
 
-/**
- * Detalhe de uma conversa (thread) — lê direto da Evolution API
- * (`findMessages`). Busca em TODOS os `remoteJid` associados a esse telefone
- * (telefone real + LID, se houver os dois — ver `getConversas`), mescla e
- * deduplica por id de mensagem, e ordena cronologicamente. Só busca a página
- * mais recente (as `TAMANHO_HISTORICO` mensagens mais novas de cada
- * remoteJid); carregar mensagens mais antigas que isso ainda não está
- * implementado (fica pra uma fase seguinte, com UI de "carregar mais").
- */
-export async function getConversa(telefone: string): Promise<ConversaDetalhe | null> {
-  // NÃO chama mais `findChats` (buscava os ~1000 chats só pra descobrir os
-  // remoteJids de UM telefone -- ~1s de latência a cada troca de conversa).
-  // Os JIDs vêm do telefone direto + os LIDs históricos do `whatsapp_lids`
-  // (consulta barata no banco). O registro de LIDs novos agora é feito na
-  // lista (`getConversas`, que já tem findChats carregado) -- ver lá.
-  // foto + nome + LIDs disparam todos em paralelo desde o início.
-  const [fotoUrl, nomesPorTelefone, lidsHistoricos] = await Promise.all([
-    getFotoPerfilComCache(telefone).catch(() => null),
-    buscarNomesPorTelefones([telefone]),
-    getLidsConhecidos(telefone).catch(() => []),
-  ]);
+// nº máximo de mensagens carregadas do banco por conversa. As threads mais
+// longas hoje têm ~60 mensagens; 500 dá folga larga sem trazer a tabela
+// inteira. (UI de "carregar mais" antigas fica pra fase seguinte.)
+const LIMITE_MENSAGENS_BANCO = 500;
 
-  const remoteJids = Array.from(new Set([telefoneParaRemoteJid(telefone), ...lidsHistoricos]));
-  const paginas = await Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO })));
+type LinhaChatMessage = {
+  message_id: string;
+  remote_jid: string | null;
+  from_me: boolean | null;
+  user_message: string | null;
+  bot_message: string | null;
+  origem: string | null;
+  media_type: string | null;
+  media_url: string | null;
+  created_at: string;
+};
+
+function linhaParaMensagem(r: LinhaChatMessage): Mensagem {
+  const fromMe = !!r.from_me;
+  const mediaType = (r.media_type as Mensagem["mediaType"]) ?? null;
+  // remonta a URL de proxy de mídia a partir do remoteJid cru gravado no banco
+  // (a mídia do cliente vem endereçada pelo LID; o proxy precisa do remoteJid
+  // EXATO -- ver migration 025 e /api/evolution/midia). Se por algum motivo
+  // faltar o remote_jid (linha antiga capturada antes do gravador incluir a
+  // coluna), cai pra media_url gravada ou nulo.
+  const mediaUrl = mediaType
+    ? r.media_url ?? (r.remote_jid ? urlProxyMidiaPorChave({ id: r.message_id, remoteJid: r.remote_jid, fromMe }) : null)
+    : null;
+
+  return {
+    id: r.message_id,
+    createdAt: new Date(r.created_at).toISOString(),
+    deCliente: !fromMe,
+    userMessage: fromMe ? null : r.user_message,
+    botMessage: fromMe ? r.bot_message : null,
+    origem: (r.origem as Mensagem["origem"]) ?? "bot",
+    mediaUrl,
+    mediaType,
+    nomeArquivo: null,
+  };
+}
+
+/**
+ * Histórico do banco (`chat_messages`, fonte de verdade a partir da Fase 3 —
+ * modelo Datanyx). O n8n grava toda mensagem (entrada + eco de saída) com o
+ * `message_id` real; aqui lemos só isso (`message_id is not null`), em ordem
+ * cronológica. Uma única consulta indexada (`idx_chat_messages_phone_created`)
+ * — troca os ~1-3s de latência do caminho antigo (findChats de ~1000 chats +
+ * findMessages por remoteJid) por poucos ms. Devolve `null` quando não há
+ * NENHUMA linha do telefone, pra `getConversa` cair no Evolution ao vivo.
+ */
+async function getMensagensDoBanco(telefone: string): Promise<Mensagem[] | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("message_id, remote_jid, from_me, user_message, bot_message, origem, media_type, media_url, created_at")
+    .eq("phone", telefone)
+    .not("message_id", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(LIMITE_MENSAGENS_BANCO);
+
+  if (error || !data || data.length === 0) return null;
+  return (data as LinhaChatMessage[]).map(linhaParaMensagem);
+}
+
+/**
+ * Caminho antigo: detalhe lido direto da Evolution API (`findMessages`), em
+ * TODOS os `remoteJid` do telefone (telefone real + LIDs), mesclado e
+ * deduplicado por id. A partir da Fase 3 vira só FALLBACK — usado quando o
+ * banco ainda não tem nenhuma linha desse telefone (ex.: conversa anterior à
+ * janela do backfill, ou telefone que escapou da captura).
+ */
+async function getConversaDoEvolution(
+  telefone: string,
+  ctx: { fotoUrl: string | null; nomesPorTelefone: Map<string, string>; remoteJids: string[] }
+): Promise<ConversaDetalhe | null> {
+  const paginas = await Promise.all(ctx.remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO })));
 
   const totalMensagens = paginas.reduce((soma, p) => soma + p.total, 0);
   if (totalMensagens === 0) return null;
@@ -271,30 +324,56 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
       registrosUnicos.push(r);
     }
   }
-  // mescla os remoteJids e ordena cronológica (cada página individual já vem
-  // mais recente -> mais antiga; juntas, a ordem original não vale mais).
   registrosUnicos.sort((a, b) => a.messageTimestamp - b.messageTimestamp);
 
   const mensagens: Mensagem[] = registrosUnicos.map((r) => {
     const { texto, mediaUrl, mediaType, nomeArquivo } = extrairTextoOuMidia(r);
     const dataIso = new Date(r.messageTimestamp * 1000).toISOString();
-
     if (!r.key.fromMe) {
       return { id: r.key.id, createdAt: dataIso, deCliente: true, userMessage: texto, botMessage: null, origem: "bot", mediaUrl, mediaType, nomeArquivo };
     }
     return { id: r.key.id, createdAt: dataIso, deCliente: false, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType, nomeArquivo };
   });
 
-  // nome de fallback: pushName da mensagem mais recente DO CLIENTE (fromMe
-  // false) -- já temos os registros carregados, sem precisar de findContacts
-  // (que buscava a lista inteira de contatos a cada abertura). Nunca pega a
-  // última mensagem no geral, que pode ser do bot e vir com pushName "Você".
   const nomePush = [...registrosUnicos].reverse().find((r) => !r.key.fromMe)?.pushName?.trim() || null;
 
   return {
     phone: telefone,
-    nomeCliente: nomesPorTelefone.get(telefone) ?? nomePush,
-    fotoUrl,
+    nomeCliente: ctx.nomesPorTelefone.get(telefone) ?? nomePush,
+    fotoUrl: ctx.fotoUrl,
     mensagens,
   };
+}
+
+/**
+ * Detalhe de uma conversa (thread). Fase 3: lê do banco (`chat_messages`,
+ * fonte de verdade) — rápido. Só cai no Evolution ao vivo quando o banco não
+ * tem nenhuma linha desse telefone. foto + nome (clientes) + LIDs + mensagens
+ * disparam todos em paralelo desde o início.
+ */
+export async function getConversa(telefone: string): Promise<ConversaDetalhe | null> {
+  const [fotoUrl, nomesPorTelefone, lidsHistoricos, mensagensBanco] = await Promise.all([
+    getFotoPerfilComCache(telefone).catch(() => null),
+    buscarNomesPorTelefones([telefone]),
+    getLidsConhecidos(telefone).catch(() => []),
+    getMensagensDoBanco(telefone).catch(() => null),
+  ]);
+
+  const remoteJids = Array.from(new Set([telefoneParaRemoteJid(telefone), ...lidsHistoricos]));
+
+  // banco vazio pra esse telefone -> fallback pro comportamento antigo (ao vivo).
+  if (!mensagensBanco || mensagensBanco.length === 0) {
+    return getConversaDoEvolution(telefone, { fotoUrl, nomesPorTelefone, remoteJids });
+  }
+
+  // nome de fallback só quando NÃO é cliente cadastrado (o banco não guarda
+  // pushName): uma consulta direcionada por remoteJid (0/1 contato), bem mais
+  // barata que o findContacts global. Só paga esse custo quem não tem cadastro.
+  let nomeCliente = nomesPorTelefone.get(telefone) ?? null;
+  if (!nomeCliente) {
+    const contatos = await Promise.all(remoteJids.map((jid) => findContatoPorRemoteJid(jid).catch(() => null)));
+    nomeCliente = contatos.map((c) => c?.pushName?.trim()).find((n) => !!n) ?? null;
+  }
+
+  return { phone: telefone, nomeCliente, fotoUrl, mensagens: mensagensBanco };
 }

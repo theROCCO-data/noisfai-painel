@@ -106,13 +106,17 @@ export type MidiaExtraida = {
  * `getBase64FromMediaMessage` (best-effort: só funciona enquanto o link do
  * WhatsApp não tiver expirado).
  */
-function urlProxyMidia(msg: EvolutionMessageRecord): string {
+export function urlProxyMidiaPorChave(chave: { id: string; remoteJid: string; fromMe: boolean }): string {
   const params = new URLSearchParams({
-    id: msg.key.id,
-    remoteJid: msg.key.remoteJid,
-    fromMe: String(msg.key.fromMe),
+    id: chave.id,
+    remoteJid: chave.remoteJid,
+    fromMe: String(chave.fromMe),
   });
   return `/api/evolution/midia?${params.toString()}`;
+}
+
+function urlProxyMidia(msg: EvolutionMessageRecord): string {
+  return urlProxyMidiaPorChave({ id: msg.key.id, remoteJid: msg.key.remoteJid, fromMe: msg.key.fromMe });
 }
 
 export function extrairTextoOuMidia(msg: EvolutionMessageRecord): MidiaExtraida {
