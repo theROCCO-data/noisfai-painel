@@ -1,3 +1,4 @@
+import { Suspense, type ReactNode } from "react";
 import { getConversas, contarNaoLidas, getFotosPerfilEmLote } from "@/lib/data/conversas";
 import { getStatusHumanoEmLote } from "@/lib/data/status-humano";
 import { getConfirmacoesPendentesEmLote } from "@/lib/data/confirmacoes-gerente";
@@ -24,7 +25,33 @@ export const dynamic = "force-dynamic";
 // padrão.
 const LIMITE_STATUS_NA_LISTA = 20;
 
-export default async function ConversasLayout({ children }: LayoutProps<"/conversas">) {
+/**
+ * Cabeçalho da lista. Estático (não depende de dado remoto) — fica no
+ * fallback do Suspense pra tela não aparecer vazia enquanto a lista carrega.
+ */
+function CabecalhoConversas({ acoes }: { acoes?: ReactNode }) {
+  return (
+    <div className="flex w-full flex-col gap-3 px-[18px] pb-[14px] pt-[22px]">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="font-display text-[22px] font-semibold text-[var(--color-text-primary)]">Conversas</h1>
+        <div className="flex shrink-0 items-center gap-2">{acoes}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Toda a busca de dados da lista (getConversas via Evolution ~1s + status
+ * humano/IA via n8n + fotos + contagem de não lidas). Fica ISOLADA num
+ * componente async dentro de <Suspense> (ver layout) pra NÃO bloquear a
+ * renderização da thread aberta: como o layout envolve os filhos, se esse
+ * await acontecesse no corpo do layout, cada `router.refresh()` (inclusive o
+ * disparado pelo Realtime a cada mensagem nova) só pintaria a thread depois
+ * que a lista lenta terminasse -- era a causa do atraso de ~2s pra mensagem
+ * nova aparecer. Isolada assim, a thread (que lê do banco, rápido) atualiza
+ * na hora e a lista entra em streaming logo atrás.
+ */
+async function ListaConversasServer() {
   const [conversas, modelos, staff] = await Promise.all([
     getConversas(),
     listModelosMensagem(),
@@ -69,40 +96,46 @@ export default async function ConversasLayout({ children }: LayoutProps<"/conver
   }));
 
   return (
+    <>
+      <CabecalhoConversas
+        acoes={
+          <>
+            <ModelosMensagemManagerDialog modelos={modelos} />
+            <NovaConversaDialog
+              modelos={modelos}
+              nomeAtendente={staff?.name ?? "Equipe"}
+              trigger={
+                <span
+                  title="Nova conversa"
+                  className="flex size-[28px] shrink-0 items-center justify-center rounded-[10px] text-white shadow-[0px_10px_22px_-12px_rgba(168,85,247,0.6)]"
+                  style={{ backgroundImage: "linear-gradient(163deg, #a855f7 14%, #6d28d9 86%)" }}
+                >
+                  <span className="text-[16px] leading-none">+</span>
+                </span>
+              }
+            />
+          </>
+        }
+      />
+      <ListaConversas itens={itens} />
+    </>
+  );
+}
+
+export default function ConversasLayout({ children }: LayoutProps<"/conversas">) {
+  return (
     <ConversasShell
       lista={
         <>
-          {/* O gatilho principal agora é o Realtime (ver auto-refresh.tsx) --
-              mensagem nova atualiza a tela na hora. Esse intervalo é só a
-              rede de segurança pro caso do WebSocket cair; 5s/12s eram
-              pesados demais pra essa tela quando ainda era o ÚNICO gatilho
-              (cada tick busca a lista inteira ~970 chats na Evolution +
-              status de várias conversas + o histórico da conversa aberta),
-              e agora nem precisa mais ser tão frequente. */}
+          {/* O gatilho principal é o Realtime (ver auto-refresh.tsx) -- mensagem
+              nova dispara router.refresh(). A lista fica num <Suspense> pra esse
+              refresh não esperar a busca lenta dela (Evolution ~1s) antes de
+              pintar a thread aberta (que lê do banco). Esse intervalo é só a
+              rede de segurança pro caso do WebSocket cair. */}
           <AutoRefresh intervalMs={20000} />
-          <div className="flex w-full flex-col gap-3 px-[18px] pb-[14px] pt-[22px]">
-            <div className="flex items-center justify-between gap-2">
-              <h1 className="font-display text-[22px] font-semibold text-[var(--color-text-primary)]">Conversas</h1>
-              <div className="flex shrink-0 items-center gap-2">
-                <ModelosMensagemManagerDialog modelos={modelos} />
-                <NovaConversaDialog
-                  modelos={modelos}
-                  nomeAtendente={staff?.name ?? "Equipe"}
-                  trigger={
-                    <span
-                      title="Nova conversa"
-                      className="flex size-[28px] shrink-0 items-center justify-center rounded-[10px] text-white shadow-[0px_10px_22px_-12px_rgba(168,85,247,0.6)]"
-                      style={{ backgroundImage: "linear-gradient(163deg, #a855f7 14%, #6d28d9 86%)" }}
-                    >
-                      <span className="text-[16px] leading-none">+</span>
-                    </span>
-                  }
-                />
-              </div>
-            </div>
-          </div>
-
-          <ListaConversas itens={itens} />
+          <Suspense fallback={<CabecalhoConversas />}>
+            <ListaConversasServer />
+          </Suspense>
         </>
       }
     >
