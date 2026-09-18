@@ -27,25 +27,28 @@ export default async function ConversaPage({
   // getStatusHumano só depende do telefone (não do resultado de getConversa)
   // — rodar em paralelo em vez de esperar a conversa carregar primeiro corta
   // uma rodada inteira de espera em série a cada troca de conversa.
-  const [conversa, status, modelos, staff, confirmacoes, usuarios] = await Promise.all([
+  // tudo em paralelo, incluindo o "marcar como lida" (best-effort) -- que
+  // antes rodava em série DEPOIS, somando uma rodada de latência a cada
+  // abertura. `listUsuarios` saiu daqui: só é preciso pro form de grupo
+  // grande (raro), então é buscado sob demanda mais abaixo.
+  const [conversa, status, modelos, staff, confirmacoes] = await Promise.all([
     getConversa(telefone),
     getStatusHumano(telefone),
     listModelosMensagem(),
     getCurrentStaffUser(),
     getConfirmacoesPendentesEmLote([telefone]),
-    listUsuarios(),
+    marcarComoLida(telefone).catch(() => {}),
   ]);
 
   if (!conversa) notFound();
   const label = formatTelefoneBR(conversa.phone);
   const confirmacaoPendente = confirmacoes.get(telefone) ?? null;
-  const atendentes = usuarios.filter((u) => u.cargo !== "Desenvolvedor");
   const detalheGrupoGrande =
     confirmacaoPendente?.tipo === "grupo_grande" ? parseDetalheGrupoGrande(confirmacaoPendente.detalhe) : null;
-
-  // abrir a conversa marca como lida -- best-effort, não deve derrubar a
-  // tela se falhar (é só uma cortesia visual da lista).
-  await marcarComoLida(telefone).catch(() => {});
+  // só bate no auth.admin.listUsers quando de fato vai renderizar o form de
+  // confirmação de grupo grande -- na esmagadora maioria das aberturas não há
+  // pendência, então essa chamada (lenta) é pulada.
+  const atendentes = detalheGrupoGrande ? (await listUsuarios()).filter((u) => u.cargo !== "Desenvolvedor") : [];
 
   return (
     <>

@@ -124,6 +124,21 @@ function rotuloDeMidia(mediaType: "image" | "audio" | "video" | "document" | nul
 export async function getConversas(): Promise<ConversaResumo[]> {
   const grupos = await getGruposDeChatsPorTelefone();
   const telefones = [...grupos.keys()];
+
+  // registra (best-effort, fire-and-forget) todo LID visto agora → telefone.
+  // Antes isso vivia em `getConversa`, que por isso precisava chamar
+  // `findChats` a cada abertura de conversa (~1s de latência). Movido pra cá:
+  // a lista já tem `findChats` carregado, e roda no load + a cada refresh
+  // (20s/realtime), então os LIDs ficam registrados no `whatsapp_lids` sem
+  // custo extra — e o detalhe da conversa passa a ler só do banco (rápido).
+  const paresLid = telefones.flatMap((tel) =>
+    grupos.get(tel)!
+      .map((c) => c.remoteJid)
+      .filter((jid) => jid.endsWith("@lid"))
+      .map((lid) => ({ lid, telefone: tel }))
+  );
+  if (paresLid.length > 0) registrarLidsConhecidos(paresLid).catch(() => {});
+
   const [nomesPorTelefone, leituras, contatos] = await Promise.all([
     buscarNomesPorTelefones(telefones),
     getUltimasLeituras(telefones),
@@ -229,35 +244,20 @@ const TAMANHO_HISTORICO = 200;
  * implementado (fica pra uma fase seguinte, com UI de "carregar mais").
  */
 export async function getConversa(telefone: string): Promise<ConversaDetalhe | null> {
-  // foto não depende do agrupamento LID/telefone nem das mensagens — dispara
-  // já, em paralelo com tudo o resto, em vez de esperar até o fim (era uma
-  // rodada inteira de espera em série a cada troca de conversa).
-  const fotoPromise = getFotoPerfilComCache(telefone);
-
-  const grupos = await getGruposDeChatsPorTelefone();
-  const chatsDoTelefone = grupos.get(telefone);
-  // fallback: telefone não apareceu em nenhum chat agrupado (ex.: link direto
-  // pra um telefone que nunca conversou) — ainda tenta buscar pelo JID normal.
-  const remoteJidsAtuais = chatsDoTelefone?.map((c) => c.remoteJid) ?? [telefoneParaRemoteJid(telefone)];
-
-  // registra (best-effort) os LIDs vistos AGORA pra esse telefone — a
-  // Evolution pode "esquecer" essa entrada da lista de chats mais tarde
-  // (achado em auditoria 16/09/2026), então guardamos assim que a vemos.
-  const lidsAtuais = remoteJidsAtuais.filter((jid) => jid.endsWith("@lid")).map((lid) => ({ lid, telefone }));
-  if (lidsAtuais.length > 0) registrarLidsConhecidos(lidsAtuais).catch(() => {});
-
-  // mescla com qualquer LID histórico já visto pra esse telefone, mesmo que
-  // a Evolution não mostre mais aquela entrada na lista atual — sem isso,
-  // mensagens antigas enviadas sob um LID que "sumiu" ficavam inacessíveis
-  // pra sempre, mesmo a Evolution ainda tendo o dado.
-  const lidsHistoricos = await getLidsConhecidos(telefone).catch(() => []);
-  const remoteJids = Array.from(new Set([...remoteJidsAtuais, ...lidsHistoricos]));
-
-  const [paginas, nomesPorTelefone, contatos] = await Promise.all([
-    Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO }))),
+  // NÃO chama mais `findChats` (buscava os ~1000 chats só pra descobrir os
+  // remoteJids de UM telefone -- ~1s de latência a cada troca de conversa).
+  // Os JIDs vêm do telefone direto + os LIDs históricos do `whatsapp_lids`
+  // (consulta barata no banco). O registro de LIDs novos agora é feito na
+  // lista (`getConversas`, que já tem findChats carregado) -- ver lá.
+  // foto + nome + LIDs disparam todos em paralelo desde o início.
+  const [fotoUrl, nomesPorTelefone, lidsHistoricos] = await Promise.all([
+    getFotoPerfilComCache(telefone).catch(() => null),
     buscarNomesPorTelefones([telefone]),
-    findContacts(),
+    getLidsConhecidos(telefone).catch(() => []),
   ]);
+
+  const remoteJids = Array.from(new Set([telefoneParaRemoteJid(telefone), ...lidsHistoricos]));
+  const paginas = await Promise.all(remoteJids.map((jid) => findMessages(jid, { tamanhoPagina: TAMANHO_HISTORICO })));
 
   const totalMensagens = paginas.reduce((soma, p) => soma + p.total, 0);
   if (totalMensagens === 0) return null;
@@ -285,13 +285,11 @@ export async function getConversa(telefone: string): Promise<ConversaDetalhe | n
     return { id: r.key.id, createdAt: dataIso, deCliente: false, userMessage: null, botMessage: texto, origem: inferirOrigem(r), mediaUrl, mediaType, nomeArquivo };
   });
 
-  const fotoUrl = await fotoPromise;
-
-  // mesmo fallback de `getConversas` -- pushName do contato de verdade
-  // (`findContacts`, por remoteJid), não da última mensagem (essa pode ser
-  // do bot e vir com pushName "Você", o dono da instância).
-  const pushNamePorRemoteJid = new Map(contatos.map((c) => [c.remoteJid, c.pushName?.trim() || null]));
-  const nomePush = remoteJids.map((jid) => pushNamePorRemoteJid.get(jid)).find((n) => !!n) ?? null;
+  // nome de fallback: pushName da mensagem mais recente DO CLIENTE (fromMe
+  // false) -- já temos os registros carregados, sem precisar de findContacts
+  // (que buscava a lista inteira de contatos a cada abertura). Nunca pega a
+  // última mensagem no geral, que pode ser do bot e vir com pushName "Você".
+  const nomePush = [...registrosUnicos].reverse().find((r) => !r.key.fromMe)?.pushName?.trim() || null;
 
   return {
     phone: telefone,
