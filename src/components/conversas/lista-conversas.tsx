@@ -11,9 +11,11 @@ export type ItemConversa = ConversaResumo & {
   status: StatusAtendimento;
   contagemNaoLidas?: number;
   confirmacaoGerenteTipo?: TipoConfirmacaoGerente | null;
+  interesseJantarHarmonizado?: boolean;
+  jantarHarmonizadoConfirmado?: boolean;
 };
 
-type Filtro = "tudo" | "nao-lidas" | "confirmacao";
+type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado";
 
 /**
  * Abas ao estilo WhatsApp (Tudo / Não lidas / Confirmação do Gerente) —
@@ -37,13 +39,16 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
 
   const qtdNaoLidas = itensBuscados.filter((i) => i.naoLida).length;
   const qtdConfirmacao = itensBuscados.filter((i) => i.confirmacaoGerenteTipo).length;
+  const qtdJantar = itensBuscados.filter((i) => i.interesseJantarHarmonizado).length;
 
   const itensFiltrados =
     filtro === "nao-lidas"
       ? itensBuscados.filter((i) => i.naoLida)
       : filtro === "confirmacao"
         ? itensBuscados.filter((i) => i.confirmacaoGerenteTipo)
-        : itensBuscados;
+        : filtro === "jantar-harmonizado"
+          ? itensBuscados.filter((i) => i.interesseJantarHarmonizado)
+          : itensBuscados;
 
   return (
     <>
@@ -71,6 +76,12 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
           ativo={filtro === "confirmacao"}
           onClick={() => setFiltro("confirmacao")}
         />
+        <AbaFiltro
+          label="🍷 Jantar Harmonizado"
+          contagem={qtdJantar}
+          ativo={filtro === "jantar-harmonizado"}
+          onClick={() => setFiltro("jantar-harmonizado")}
+        />
       </div>
 
       {itensFiltrados.length === 0 ? (
@@ -90,6 +101,8 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
             naoLida={c.naoLida}
             contagemNaoLidas={c.contagemNaoLidas}
             confirmacaoGerenteTipo={c.confirmacaoGerenteTipo}
+            interesseJantarHarmonizado={c.interesseJantarHarmonizado}
+            jantarHarmonizadoConfirmado={c.jantarHarmonizadoConfirmado}
           />
         ))
       )}

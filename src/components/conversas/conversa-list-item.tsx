@@ -29,6 +29,8 @@ export function ConversaListItem({
   naoLida = false,
   contagemNaoLidas,
   confirmacaoGerenteTipo,
+  interesseJantarHarmonizado = false,
+  jantarHarmonizadoConfirmado = false,
 }: {
   phone: string;
   ultimaAtualizacao: string;
@@ -40,6 +42,10 @@ export function ConversaListItem({
   /** número exato só calculado pras conversas visíveis no topo — ver contarNaoLidas */
   contagemNaoLidas?: number;
   confirmacaoGerenteTipo?: TipoConfirmacaoGerente | null;
+  /** cliente que demonstrou interesse em Jantar Harmonizado */
+  interesseJantarHarmonizado?: boolean;
+  /** já tem reserva de JH com pagamento confirmado */
+  jantarHarmonizadoConfirmado?: boolean;
 }) {
   const pathname = usePathname();
   const ativo = pathname === `/conversas/${phone}`;
@@ -93,6 +99,17 @@ export function ConversaListItem({
           {confirmacaoGerenteTipo && (
             <span className="w-fit rounded-[11px] bg-[rgba(248,113,113,0.16)] px-[9px] py-0.5 text-[11px] font-semibold text-[var(--color-status-red)]">
               🔔 {rotuloConfirmacao(confirmacaoGerenteTipo)}
+            </span>
+          )}
+          {interesseJantarHarmonizado && (
+            <span
+              className={`w-fit rounded-[11px] px-[9px] py-0.5 text-[11px] font-semibold ${
+                jantarHarmonizadoConfirmado
+                  ? "bg-[rgba(74,222,128,0.14)] text-[#4ade80]"
+                  : "bg-[rgba(251,191,36,0.14)] text-[var(--color-status-amber)]"
+              }`}
+            >
+              🍷 JH · {jantarHarmonizadoConfirmado ? "Confirmado" : "Aguardando"}
             </span>
           )}
         </div>

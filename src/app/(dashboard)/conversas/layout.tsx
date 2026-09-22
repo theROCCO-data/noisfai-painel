@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from "react";
 import { getConversas, contarNaoLidas, getFotosPerfilEmLote } from "@/lib/data/conversas";
 import { getStatusHumanoEmLote } from "@/lib/data/status-humano";
 import { getConfirmacoesPendentesEmLote } from "@/lib/data/confirmacoes-gerente";
+import { getInteresseJantarHarmonizadoEmLote } from "@/lib/data/jantar-harmonizado";
 import { getUltimasLeituras, LANCAMENTO_NAO_LIDAS } from "@/lib/data/leitura";
 import { listModelosMensagem } from "@/lib/data/modelos-mensagem";
 import { getCurrentStaffUser } from "@/lib/auth";
@@ -72,11 +73,12 @@ async function ListaConversasServer() {
     .slice(0, LIMITE_STATUS_NA_LISTA)
     .filter((c) => !c.fotoUrl)
     .map((c) => c.phone);
-  const [statusPorTelefone, confirmacoesPorTelefone, leiturasRecentes, fotosPorTelefone] = await Promise.all([
+  const [statusPorTelefone, confirmacoesPorTelefone, leiturasRecentes, fotosPorTelefone, interesseJHPorTelefone] = await Promise.all([
     getStatusHumanoEmLote(telefonesRecentes),
     getConfirmacoesPendentesEmLote(todosTelefones),
     getUltimasLeituras(naoLidasRecentes.map((c) => c.phone)),
     getFotosPerfilEmLote(telefonesSemFoto),
+    getInteresseJantarHarmonizadoEmLote(todosTelefones),
   ]);
   const contagensNaoLidas = await Promise.all(
     naoLidasRecentes.map(async (c) => {
@@ -87,13 +89,18 @@ async function ListaConversasServer() {
   );
   const contagemPorTelefone = new Map(contagensNaoLidas);
 
-  const itens: ItemConversa[] = conversas.map((c) => ({
-    ...c,
-    fotoUrl: c.fotoUrl ?? fotosPorTelefone.get(c.phone) ?? null,
-    status: statusPorTelefone.get(c.phone) ?? "ia",
-    contagemNaoLidas: contagemPorTelefone.get(c.phone),
-    confirmacaoGerenteTipo: confirmacoesPorTelefone.get(c.phone)?.tipo ?? null,
-  }));
+  const itens: ItemConversa[] = conversas.map((c) => {
+    const jh = interesseJHPorTelefone.get(c.phone);
+    return {
+      ...c,
+      fotoUrl: c.fotoUrl ?? fotosPorTelefone.get(c.phone) ?? null,
+      status: statusPorTelefone.get(c.phone) ?? "ia",
+      contagemNaoLidas: contagemPorTelefone.get(c.phone),
+      confirmacaoGerenteTipo: confirmacoesPorTelefone.get(c.phone)?.tipo ?? null,
+      interesseJantarHarmonizado: !!jh,
+      jantarHarmonizadoConfirmado: jh?.confirmado ?? false,
+    };
+  });
 
   return (
     <>

@@ -108,6 +108,50 @@ export async function getPreReservasJH(): Promise<PreReservaJH[]> {
   }));
 }
 
+export type InteresseJantarHarmonizado = {
+  /** true quando o cliente já tem uma reserva de Jantar Harmonizado com
+   * pagamento confirmado (e não cancelada). false = interessado, mas ainda
+   * não confirmou. */
+  confirmado: boolean;
+};
+
+/**
+ * Quem demonstrou interesse em Jantar Harmonizado, em lote (mesmo padrão do
+ * `getConfirmacoesPendentesEmLote`: recebe telefones, devolve um Map). Usado
+ * pelo filtro "Jantar Harmonizado" da lista de Conversas. "Interessado" =
+ * mencionou JH numa conversa (tabela `jantar_harmonizado_interesse`, gravada
+ * pelo n8n a cada menção) OU já tem uma reserva de JH. `confirmado` = tem
+ * reserva de JH com `status_pagamento = 'confirmado'` e não cancelada.
+ */
+export async function getInteresseJantarHarmonizadoEmLote(
+  telefones: string[]
+): Promise<Map<string, InteresseJantarHarmonizado>> {
+  if (telefones.length === 0) return new Map();
+  const supabase = createAdminClient();
+
+  const [interessesRes, reservasRes] = await Promise.all([
+    supabase.from("jantar_harmonizado_interesse").select("telefone").in("telefone", telefones),
+    supabase
+      .from("reservas")
+      .select("telefone, status, status_pagamento")
+      .ilike("objetivo", "%harmonizado%")
+      .in("telefone", telefones),
+  ]);
+
+  const interessados = new Set<string>((interessesRes.data ?? []).map((r) => r.telefone as string));
+  const confirmados = new Set<string>();
+  for (const r of reservasRes.data ?? []) {
+    const tel = r.telefone as string | null;
+    if (!tel) continue;
+    interessados.add(tel); // ter reserva de JH já conta como interesse
+    if (r.status !== "cancelado" && r.status_pagamento === "confirmado") confirmados.add(tel);
+  }
+
+  const mapa = new Map<string, InteresseJantarHarmonizado>();
+  for (const tel of interessados) mapa.set(tel, { confirmado: confirmados.has(tel) });
+  return mapa;
+}
+
 export type EdicaoHistoricoJH = {
   id: number;
   titulo: string | null;
