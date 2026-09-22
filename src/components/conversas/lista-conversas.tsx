@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, ChevronDown, Check } from "lucide-react";
 import { ConversaListItem } from "@/components/conversas/conversa-list-item";
 import type { ConversaResumo } from "@/lib/data/conversas";
 import type { StatusAtendimento } from "@/lib/data/status-humano";
@@ -17,6 +17,13 @@ export type ItemConversa = ConversaResumo & {
 
 type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado";
 
+const FILTROS_META: { id: Filtro; label: string }[] = [
+  { id: "tudo", label: "Tudo" },
+  { id: "nao-lidas", label: "Não lidas" },
+  { id: "confirmacao", label: "Confirmação do Gerente" },
+  { id: "jantar-harmonizado", label: "🍷 Jantar Harmonizado" },
+];
+
 /**
  * Abas ao estilo WhatsApp (Tudo / Não lidas / Confirmação do Gerente) —
  * filtro só de exibição, client-side, sobre a lista já carregada (o
@@ -26,6 +33,7 @@ type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado";
 export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   const [filtro, setFiltro] = useState<Filtro>("tudo");
   const [busca, setBusca] = useState("");
+  const [menuFiltroAberto, setMenuFiltroAberto] = useState(false);
 
   const termoBusca = busca.trim().toLowerCase();
   const digitosBusca = termoBusca.replace(/\D/g, "");
@@ -40,6 +48,14 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   const qtdNaoLidas = itensBuscados.filter((i) => i.naoLida).length;
   const qtdConfirmacao = itensBuscados.filter((i) => i.confirmacaoGerenteTipo).length;
   const qtdJantar = itensBuscados.filter((i) => i.interesseJantarHarmonizado).length;
+
+  const contagens: Record<Filtro, number | undefined> = {
+    tudo: undefined,
+    "nao-lidas": qtdNaoLidas,
+    confirmacao: qtdConfirmacao,
+    "jantar-harmonizado": qtdJantar,
+  };
+  const filtroAtivo = FILTROS_META.find((f) => f.id === filtro)!;
 
   const itensFiltrados =
     filtro === "nao-lidas"
@@ -62,26 +78,63 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
         />
       </div>
 
-      <div className="sem-scrollbar flex w-full min-h-[32px] shrink-0 items-center gap-1.5 overflow-x-auto px-[18px] pb-[12px]">
-        <AbaFiltro label="Tudo" ativo={filtro === "tudo"} onClick={() => setFiltro("tudo")} />
-        <AbaFiltro
-          label="Não lidas"
-          contagem={qtdNaoLidas}
-          ativo={filtro === "nao-lidas"}
-          onClick={() => setFiltro("nao-lidas")}
-        />
-        <AbaFiltro
-          label="Confirmação do Gerente"
-          contagem={qtdConfirmacao}
-          ativo={filtro === "confirmacao"}
-          onClick={() => setFiltro("confirmacao")}
-        />
-        <AbaFiltro
-          label="🍷 Jantar Harmonizado"
-          contagem={qtdJantar}
-          ativo={filtro === "jantar-harmonizado"}
-          onClick={() => setFiltro("jantar-harmonizado")}
-        />
+      <div className="relative shrink-0 px-[18px] pb-[12px]">
+        <button
+          type="button"
+          onClick={() => setMenuFiltroAberto((o) => !o)}
+          className={`flex items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
+            filtro !== "tudo"
+              ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
+              : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+          }`}
+        >
+          {filtroAtivo.label}
+          {!!contagens[filtro] && (
+            <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
+              {contagens[filtro]}
+            </span>
+          )}
+          <ChevronDown size={14} className={`transition-transform ${menuFiltroAberto ? "rotate-180" : ""}`} />
+        </button>
+
+        {menuFiltroAberto && (
+          <>
+            <button
+              type="button"
+              aria-hidden
+              tabIndex={-1}
+              onClick={() => setMenuFiltroAberto(false)}
+              className="fixed inset-0 z-10 cursor-default"
+            />
+            <div className="absolute left-[18px] z-20 mt-1.5 w-[240px] overflow-hidden rounded-xl border border-[#363050] bg-[#1a1729] p-1 shadow-[var(--shadow-card,0_10px_30px_-10px_rgba(0,0,0,0.6))]">
+              {FILTROS_META.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => {
+                    setFiltro(f.id);
+                    setMenuFiltroAberto(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[12px] transition-colors ${
+                    filtro === f.id
+                      ? "bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
+                      : "text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-primary)]"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Check size={13} className={filtro === f.id ? "opacity-100" : "opacity-0"} />
+                    {f.label}
+                  </span>
+                  {!!contagens[f.id] && (
+                    <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
+                      {contagens[f.id]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {itensFiltrados.length === 0 ? (
@@ -110,33 +163,3 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   );
 }
 
-function AbaFiltro({
-  label,
-  contagem,
-  ativo,
-  onClick,
-}: {
-  label: string;
-  contagem?: number;
-  ativo: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex shrink-0 items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
-        ativo
-          ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
-          : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-      }`}
-    >
-      {label}
-      {!!contagem && (
-        <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
-          {contagem}
-        </span>
-      )}
-    </button>
-  );
-}
