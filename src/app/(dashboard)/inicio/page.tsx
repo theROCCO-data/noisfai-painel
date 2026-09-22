@@ -181,13 +181,23 @@ export default async function InicioPage() {
                       Enviado {tempo.texto}
                     </span>
                   </div>
-                  {p.comprovanteUrl ? (
-                    <a href={p.comprovanteUrl} target="_blank" rel="noreferrer" className="font-medium text-[#d8b4fe] hover:underline">
-                      Ver imagem
-                    </a>
-                  ) : (
-                    <p className="text-[var(--color-text-muted)]">Sem comprovante</p>
-                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    {p.comprovanteUrl ? (
+                      <a href={p.comprovanteUrl} target="_blank" rel="noreferrer" className="font-medium text-[#d8b4fe] hover:underline">
+                        Ver imagem
+                      </a>
+                    ) : (
+                      <p className="text-[var(--color-text-muted)]">Sem comprovante</p>
+                    )}
+                    {p.telefone && (
+                      <Link
+                        href={`/conversas/${p.telefone}`}
+                        className="flex items-center gap-1.5 rounded-[999px] border border-[rgba(168,85,247,0.35)] bg-[rgba(168,85,247,0.14)] px-3 py-1 text-[12px] font-medium text-[#d8b4fe]"
+                      >
+                        <MessageCircle size={14} /> Conversar
+                      </Link>
+                    )}
+                  </div>
                 </div>
               );
             })
@@ -202,6 +212,7 @@ export default async function InicioPage() {
             <p className="w-[130px]">VALOR ESPERADO</p>
             <p className="w-[120px]">ENVIADO HÁ</p>
             <p className="w-[130px]">COMPROVANTE</p>
+            <p className="w-[52px]" />
           </div>
           {pagamentosPendentes.length === 0 ? (
             <p className="px-[18px] py-6 text-[13px] text-[var(--color-text-muted)]">
@@ -234,6 +245,17 @@ export default async function InicioPage() {
                     </a>
                   ) : (
                     <p className="w-[130px] text-[var(--color-text-muted)]">Sem comprovante</p>
+                  )}
+                  {p.telefone ? (
+                    <Link
+                      href={`/conversas/${p.telefone}`}
+                      title="Abrir conversa com o cliente"
+                      className="flex w-[52px] shrink-0 items-center justify-center rounded-[10px] border border-[rgba(168,85,247,0.3)] py-1.5 text-[#d8b4fe] transition-colors hover:border-[rgba(168,85,247,0.55)] hover:bg-[rgba(168,85,247,0.12)]"
+                    >
+                      <MessageCircle size={16} />
+                    </Link>
+                  ) : (
+                    <span className="w-[52px]" />
                   )}
                 </div>
               );

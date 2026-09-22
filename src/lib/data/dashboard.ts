@@ -89,6 +89,7 @@ export async function getVagasHoje() {
 export type PagamentoPendente = {
   id: number;
   nome: string;
+  telefone: string;
   pessoas: number;
   valorEsperado: number;
   criadoEm: string;
@@ -107,9 +108,10 @@ export async function getPagamentosPendentesJH(): Promise<PagamentoPendente[]> {
   const [{ data: reservas, error }, { data: evento }] = await Promise.all([
     supabase
       .from("reservas")
-      .select("id, nome, pessoas, created_at, status_pagamento, comprovante_url, objetivo")
+      .select("id, nome, telefone, pessoas, created_at, status_pagamento, comprovante_url, objetivo")
       .ilike("objetivo", "%harmonizado%")
       .eq("status_pagamento", "pendente")
+      .neq("status", "cancelado")
       .order("created_at", { ascending: true }),
     supabase
       .from("eventos_especiais")
@@ -126,6 +128,7 @@ export async function getPagamentosPendentesJH(): Promise<PagamentoPendente[]> {
   return (reservas ?? []).map((r) => ({
     id: r.id,
     nome: r.nome,
+    telefone: r.telefone ?? "",
     pessoas: r.pessoas,
     valorEsperado: valorPessoa * r.pessoas,
     criadoEm: r.created_at,

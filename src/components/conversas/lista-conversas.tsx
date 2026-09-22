@@ -17,9 +17,11 @@ export type ItemConversa = ConversaResumo & {
 
 type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado";
 
-const FILTROS_META: { id: Filtro; label: string }[] = [
+// "Não lidas" fica FORA do dropdown (chip fixo, sempre visível, com o
+// contador ao lado do "Tudo" — pra mensagem não lida não passar despercebida).
+// O resto vive no dropdown.
+const FILTROS_DROPDOWN: { id: Filtro; label: string }[] = [
   { id: "tudo", label: "Tudo" },
-  { id: "nao-lidas", label: "Não lidas" },
   { id: "confirmacao", label: "Confirmação do Gerente" },
   { id: "jantar-harmonizado", label: "🍷 Jantar Harmonizado" },
 ];
@@ -55,7 +57,12 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
     confirmacao: qtdConfirmacao,
     "jantar-harmonizado": qtdJantar,
   };
-  const filtroAtivo = FILTROS_META.find((f) => f.id === filtro)!;
+  // rótulo/estado do botão-dropdown: mostra o filtro do dropdown ativo
+  // (Confirmação/Jantar); se o ativo for "Não lidas" (chip fora), o botão
+  // volta pra "Tudo" e não fica destacado.
+  const dropdownItemAtivo = FILTROS_DROPDOWN.find((f) => f.id === filtro);
+  const botaoLabel = dropdownItemAtivo ? dropdownItemAtivo.label : "Tudo";
+  const botaoDestacado = filtro === "confirmacao" || filtro === "jantar-harmonizado";
 
   const itensFiltrados =
     filtro === "nao-lidas"
@@ -78,23 +85,42 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
         />
       </div>
 
-      <div className="relative shrink-0 px-[18px] pb-[12px]">
+      <div className="relative flex shrink-0 items-center gap-1.5 px-[18px] pb-[12px]">
         <button
           type="button"
           onClick={() => setMenuFiltroAberto((o) => !o)}
           className={`flex items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
-            filtro !== "tudo"
+            botaoDestacado
               ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
               : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           }`}
         >
-          {filtroAtivo.label}
-          {!!contagens[filtro] && (
+          {botaoLabel}
+          {botaoDestacado && !!contagens[filtro] && (
             <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
               {contagens[filtro]}
             </span>
           )}
           <ChevronDown size={14} className={`transition-transform ${menuFiltroAberto ? "rotate-180" : ""}`} />
+        </button>
+
+        {/* "Não lidas" fora do dropdown: chip fixo com contador, pra mensagem
+            não lida não passar despercebida. */}
+        <button
+          type="button"
+          onClick={() => setFiltro("nao-lidas")}
+          className={`flex items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
+            filtro === "nao-lidas"
+              ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
+              : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+          }`}
+        >
+          Não lidas
+          {qtdNaoLidas > 0 && (
+            <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
+              {qtdNaoLidas}
+            </span>
+          )}
         </button>
 
         {menuFiltroAberto && (
@@ -106,8 +132,8 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
               onClick={() => setMenuFiltroAberto(false)}
               className="fixed inset-0 z-10 cursor-default"
             />
-            <div className="absolute left-[18px] z-20 mt-1.5 w-[240px] overflow-hidden rounded-xl border border-[#363050] bg-[#1a1729] p-1 shadow-[var(--shadow-card,0_10px_30px_-10px_rgba(0,0,0,0.6))]">
-              {FILTROS_META.map((f) => (
+            <div className="absolute left-[18px] top-full z-20 mt-1.5 w-[240px] overflow-hidden rounded-xl border border-[#363050] bg-[#1a1729] p-1 shadow-[var(--shadow-card,0_10px_30px_-10px_rgba(0,0,0,0.6))]">
+              {FILTROS_DROPDOWN.map((f) => (
                 <button
                   key={f.id}
                   type="button"
