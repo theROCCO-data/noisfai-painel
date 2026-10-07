@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, ChevronDown, Check } from "lucide-react";
+import { Search, ChevronDown, Check, AlertTriangle, ChevronRight } from "lucide-react";
 import { ConversaListItem } from "@/components/conversas/conversa-list-item";
 import type { ConversaResumo } from "@/lib/data/conversas";
 import type { StatusAtendimento } from "@/lib/data/status-humano";
@@ -15,7 +15,7 @@ export type ItemConversa = ConversaResumo & {
   jantarHarmonizadoConfirmado?: boolean;
 };
 
-type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado";
+type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado" | "jantar-aguardando";
 
 // "Não lidas" fica FORA do dropdown (chip fixo, sempre visível, com o
 // contador ao lado do "Tudo" — pra mensagem não lida não passar despercebida).
@@ -50,13 +50,17 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   const qtdNaoLidas = itensBuscados.filter((i) => i.naoLida).length;
   const qtdConfirmacao = itensBuscados.filter((i) => i.confirmacaoGerenteTipo).length;
   const qtdJantar = itensBuscados.filter((i) => i.interesseJantarHarmonizado).length;
+  // o que precisa de resposta: interessado no Jantar que ainda não confirmou
+  const qtdJantarAguardando = itensBuscados.filter((i) => i.interesseJantarHarmonizado && !i.jantarHarmonizadoConfirmado).length;
 
   const contagens: Record<Filtro, number | undefined> = {
     tudo: undefined,
     "nao-lidas": qtdNaoLidas,
     confirmacao: qtdConfirmacao,
     "jantar-harmonizado": qtdJantar,
+    "jantar-aguardando": qtdJantarAguardando,
   };
+  const temPendencia = qtdConfirmacao > 0 || qtdJantarAguardando > 0;
   // rótulo/estado do botão-dropdown: mostra o filtro do dropdown ativo
   // (Confirmação/Jantar); se o ativo for "Não lidas" (chip fora), o botão
   // volta pra "Tudo" e não fica destacado.
@@ -71,7 +75,9 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
         ? itensBuscados.filter((i) => i.confirmacaoGerenteTipo)
         : filtro === "jantar-harmonizado"
           ? itensBuscados.filter((i) => i.interesseJantarHarmonizado)
-          : itensBuscados;
+          : filtro === "jantar-aguardando"
+            ? itensBuscados.filter((i) => i.interesseJantarHarmonizado && !i.jantarHarmonizadoConfirmado)
+            : itensBuscados;
 
   return (
     <>
@@ -102,6 +108,10 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
             </span>
           )}
           <ChevronDown size={14} className={`transition-transform ${menuFiltroAberto ? "rotate-180" : ""}`} />
+          {/* bolinha de aviso: tem pendência escondida dentro do menu */}
+          {temPendencia && !botaoDestacado && (
+            <span aria-label="Há pendências" className="-ml-0.5 h-[7px] w-[7px] rounded-full bg-[#fbbf24] shadow-[0_0_6px_#fbbf24]" />
+          )}
         </button>
 
         {/* "Não lidas" fora do dropdown: chip fixo com contador, pra mensagem
@@ -162,6 +172,48 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
           </>
         )}
       </div>
+
+      {/* Faixa de atenção: o que espera resposta do gerente fica sempre à
+          vista, sem precisar abrir o menu de filtros. Clique = filtra. */}
+      {temPendencia && filtro === "tudo" && (
+        <div className="flex shrink-0 flex-col gap-1.5 px-[18px] pb-[12px]">
+          {qtdConfirmacao > 0 && (
+            <button
+              type="button"
+              onClick={() => setFiltro("confirmacao")}
+              className="flex w-full items-center gap-2 rounded-[10px] border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.1)] px-3 py-2 text-left text-[12px] font-medium text-[#fde68a] transition-colors hover:bg-[rgba(251,191,36,0.16)]"
+            >
+              <AlertTriangle size={14} className="shrink-0 text-[#fbbf24]" />
+              <span className="flex-1">
+                <b className="font-bold text-[#fbbf24]">{qtdConfirmacao}</b> aguardando confirmação do gerente
+              </span>
+              <ChevronRight size={14} className="shrink-0 opacity-70" />
+            </button>
+          )}
+          {qtdJantarAguardando > 0 && (
+            <button
+              type="button"
+              onClick={() => setFiltro("jantar-aguardando")}
+              className="flex w-full items-center gap-2 rounded-[10px] border border-[rgba(168,85,247,0.35)] bg-[rgba(168,85,247,0.1)] px-3 py-2 text-left text-[12px] font-medium text-[#e9d5ff] transition-colors hover:bg-[rgba(168,85,247,0.16)]"
+            >
+              <span className="shrink-0">🍷</span>
+              <span className="flex-1">
+                <b className="font-bold text-[#d8b4fe]">{qtdJantarAguardando}</b> interessados no Jantar sem confirmação
+              </span>
+              <ChevronRight size={14} className="shrink-0 opacity-70" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {filtro === "jantar-aguardando" && (
+        <div className="flex shrink-0 items-center justify-between px-[18px] pb-[10px] text-[11.5px] text-[var(--color-text-muted)]">
+          <span>🍷 Interessados no Jantar sem confirmação</span>
+          <button type="button" onClick={() => setFiltro("tudo")} className="text-[var(--color-text-primary)] underline-offset-2 hover:underline">
+            Ver tudo
+          </button>
+        </div>
+      )}
 
       {itensFiltrados.length === 0 ? (
         <p className="px-[18px] py-6 text-[13px] text-[var(--color-text-muted)]">
