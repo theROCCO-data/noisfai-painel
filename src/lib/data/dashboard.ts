@@ -164,24 +164,27 @@ export async function getConversasComHumano(): Promise<ConversaHumana[]> {
   const comHumano = chats.filter((c) => statusPorTelefone.get(c.phone) === "atencao");
   if (comHumano.length === 0) return [];
 
+  // Por telefone e só linhas com message_id (gravador autoritativo): os
+  // gravadores antigos, que preenchiam conversation_id, foram desligados.
   const { data: msgs } = await supabase
     .from("chat_messages")
-    .select("conversation_id, user_message, bot_message, created_at")
-    .in("conversation_id", comHumano.map((c) => c.conversation_id))
-    .order("created_at", { ascending: false });
+    .select("phone, user_message, bot_message, created_at")
+    .in("phone", comHumano.map((c) => c.phone))
+    .not("message_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
 
-  const ultimaPorConversa = new Map<string, string>();
+  const ultimaPorTelefone = new Map<string, string>();
   for (const m of msgs ?? []) {
-    if (!ultimaPorConversa.has(m.conversation_id)) {
-      ultimaPorConversa.set(m.conversation_id, m.user_message || m.bot_message || "");
-    }
+    const texto = m.user_message || m.bot_message;
+    if (texto && !ultimaPorTelefone.has(m.phone)) ultimaPorTelefone.set(m.phone, texto);
   }
 
   return comHumano.map((c) => ({
     conversationId: c.conversation_id,
     telefone: c.phone,
     telefoneFormatado: formatTelefoneBR(c.phone),
-    ultimaMensagem: ultimaPorConversa.get(c.conversation_id) ?? "",
+    ultimaMensagem: ultimaPorTelefone.get(c.phone) ?? "",
   }));
 }
 

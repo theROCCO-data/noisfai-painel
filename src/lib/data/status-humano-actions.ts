@@ -80,11 +80,11 @@ export async function enviarMensagem(telefone: string, mensagem: string): Promis
     };
   }
 
-  // assina a mensagem com quem está atendendo (nome + cargo cadastrados na
-  // conta), pra o cliente saber que passou a falar com uma pessoa e qual é
-  // o papel dela — não só "confia em mim" anônimo.
+  // assina a mensagem com o nome de quem está atendendo, pra o cliente saber
+  // que passou a falar com uma pessoa. Só o nome: o cargo saiu da assinatura
+  // a pedido do restaurante (07/10/2026).
   const staff = await getCurrentStaffUser();
-  const mensagemAssinada = staff ? `*${staff.name} - ${staff.role}*\n\n${mensagem}` : mensagem;
+  const mensagemAssinada = staff ? `*${staff.name}*\n\n${mensagem}` : mensagem;
 
   try {
     const res = await fetch(url, {
@@ -98,20 +98,10 @@ export async function enviarMensagem(telefone: string, mensagem: string): Promis
     return { ok: false, error: `Falha ao falar com o n8n: ${(e as Error).message}` };
   }
 
-  // registra em chat_messages (best-effort, igual antes) — a tela de
-  // Conversas não lê mais essa tabela (lê a Evolution direto), mas
-  // dashboard.ts/analises.ts ainda dependem dela por ora.
-  const { createAdminClient } = await import("@/lib/supabase/admin");
-  const supabase = createAdminClient();
-  const { data: chat } = await supabase.from("chats").select("conversation_id").eq("phone", telefone).maybeSingle();
-  if (chat?.conversation_id) {
-    await supabase.from("chat_messages").insert({
-      conversation_id: chat.conversation_id,
-      bot_message: mensagemAssinada,
-      origem: "painel",
-    });
-  }
-
+  // Não grava mais em chat_messages aqui: a mensagem sai pelo WhatsApp e o
+  // eco dela é registrado com o message_id real pelo gravador do n8n (e, se
+  // escapar, pela rotina de recuperação). A linha que era gravada aqui não
+  // tinha message_id e a tela de Conversas nunca a mostrava.
   revalidatePath(`/conversas/${telefone}`);
   return { ok: true };
 }

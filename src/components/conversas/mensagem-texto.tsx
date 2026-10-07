@@ -12,7 +12,7 @@ function renderNegrito(texto: string) {
 }
 
 /**
- * Reconhece o padrão `*Nome - Cargo*\n\ntexto` (mensagens assinadas pelo
+ * Reconhece o padrão `*Nome*\n\ntexto` (antes `*Nome - Cargo*`; mensagens assinadas pelo
  * Composer) e destaca a assinatura separada do corpo, além de interpretar
  * `*negrito*` no estilo WhatsApp em qualquer mensagem.
  */
