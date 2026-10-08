@@ -112,6 +112,7 @@ export async function getPagamentosPendentesJH(): Promise<PagamentoPendente[]> {
       .ilike("objetivo", "%harmonizado%")
       .eq("status_pagamento", "pendente")
       .neq("status", "cancelado")
+      .gte("data", hojeISO()) // edição que já passou não cobra mais pagamento
       .order("created_at", { ascending: true }),
     supabase
       .from("eventos_especiais")

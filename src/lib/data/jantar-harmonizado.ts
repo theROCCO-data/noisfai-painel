@@ -24,6 +24,12 @@ export type EdicaoJH = {
   regrasReserva: string | null;
 };
 
+// Reservas de edições que já passaram saem das telas sozinhas (ficam no banco,
+// no histórico): tudo que é "da edição atual" filtra data >= hoje.
+function hojeISO() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
 function tituloPadrao(dataEvento: string) {
   const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   const mes = meses[new Date(dataEvento + "T00:00:00").getMonth()];
@@ -90,6 +96,7 @@ export async function getPreReservasJH(): Promise<PreReservaJH[]> {
     .select("id, nome, telefone, cpf, email, pessoas, data, status_pagamento, comprovante_url, canal")
     .ilike("objetivo", "%harmonizado%")
     .neq("status", "cancelado")
+    .gte("data", hojeISO())
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`getPreReservasJH: ${error.message}`);
@@ -133,18 +140,21 @@ export async function getInteresseJantarHarmonizadoEmLote(
     supabase.from("jantar_harmonizado_interesse").select("telefone").in("telefone", telefones),
     supabase
       .from("reservas")
-      .select("telefone, status, status_pagamento")
+      .select("telefone, status, status_pagamento, data")
       .ilike("objetivo", "%harmonizado%")
       .in("telefone", telefones),
   ]);
 
+  const hoje = hojeISO();
   const interessados = new Set<string>((interessesRes.data ?? []).map((r) => r.telefone as string));
   const confirmados = new Set<string>();
   for (const r of reservasRes.data ?? []) {
     const tel = r.telefone as string | null;
     if (!tel) continue;
     interessados.add(tel); // ter reserva de JH já conta como interesse
-    if (r.status !== "cancelado" && r.status_pagamento === "confirmado") confirmados.add(tel);
+    // "Confirmado" vale só pra edição atual/futura: quem pagou uma edição
+    // passada volta a ser só interessado (público pra próxima edição).
+    if (r.status !== "cancelado" && r.status_pagamento === "confirmado" && String(r.data) >= hoje) confirmados.add(tel);
   }
 
   const mapa = new Map<string, InteresseJantarHarmonizado>();
