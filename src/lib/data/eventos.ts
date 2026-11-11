@@ -31,7 +31,7 @@ export async function listEventos({ q, status, de, ate }: ListaEventosParams = {
   let query = supabase
     .from("eventos_reservas")
     .select("id, cliente_id, nome_evento, tipo, data, horario, pessoas, espaco, observacao, valor, status, created_at, clientes(nome, telefone)")
-    .order("data", { ascending: true });
+    .order("created_at", { ascending: false }); // pedido mais recente primeiro (pedido do gerente)
 
   if (status) query = query.eq("status", status);
   if (de) query = query.gte("data", de);
