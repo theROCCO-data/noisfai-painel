@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Search, ChevronDown, Check, AlertTriangle, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Search, X, AlertTriangle, ChevronRight } from "lucide-react";
 import { ConversaListItem } from "@/components/conversas/conversa-list-item";
+import { buscarMensagens, type MensagemEncontrada } from "@/lib/data/busca-mensagens-actions";
+import { formatTelefoneBR, formatHora } from "@/lib/format";
 import type { ConversaResumo } from "@/lib/data/conversas";
 import type { StatusAtendimento } from "@/lib/data/status-humano";
 import type { TipoConfirmacaoGerente } from "@/lib/confirmacoes-gerente-shared";
@@ -15,30 +18,89 @@ export type ItemConversa = ConversaResumo & {
   jantarHarmonizadoConfirmado?: boolean;
 };
 
-type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado" | "jantar-aguardando";
+type Filtro = "tudo" | "nao-lidas" | "confirmacao" | "jantar-harmonizado" | "humano" | "jantar-aguardando";
 
-// "Não lidas" fica FORA do dropdown (chip fixo, sempre visível, com o
-// contador ao lado do "Tudo" — pra mensagem não lida não passar despercebida).
-// O resto vive no dropdown.
-const FILTROS_DROPDOWN: { id: Filtro; label: string }[] = [
+// Filtros sempre à vista, em botões, como no WhatsApp (antes ficavam num menu).
+const FILTROS: { id: Filtro; label: string }[] = [
   { id: "tudo", label: "Tudo" },
-  { id: "confirmacao", label: "Confirmação do Gerente" },
-  { id: "jantar-harmonizado", label: "🍷 Jantar Harmonizado" },
+  { id: "nao-lidas", label: "Não lidas" },
+  { id: "confirmacao", label: "Gerente" },
+  { id: "jantar-harmonizado", label: "🍷 Jantar" },
+  { id: "humano", label: "Humano" },
 ];
 
+/** Hora se for hoje; senão a data (dd/mm), como na pesquisa do WhatsApp. */
+function quandoMensagem(iso: string) {
+  const dia = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  if (dia(new Date(iso)) === dia(new Date())) return formatHora(iso);
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
+}
+
+/** Trecho da mensagem em volta do termo, com o termo destacado. */
+function Trecho({ texto, termo }: { texto: string; termo: string }) {
+  const limpo = texto.replace(/\s+/g, " ").trim();
+  const i = limpo.toLowerCase().indexOf(termo);
+  if (i < 0) return <>{limpo.slice(0, 90)}</>;
+  const ini = Math.max(0, i - 30);
+  return (
+    <>
+      {ini > 0 && "…"}
+      {limpo.slice(ini, i)}
+      <mark className="rounded-[3px] bg-[rgba(74,222,128,0.25)] px-[1px] text-[var(--color-text-primary)]">
+        {limpo.slice(i, i + termo.length)}
+      </mark>
+      {limpo.slice(i + termo.length, i + termo.length + 60)}
+      {i + termo.length + 60 < limpo.length && "…"}
+    </>
+  );
+}
+
 /**
- * Abas ao estilo WhatsApp (Tudo / Não lidas / Confirmação do Gerente) —
- * filtro só de exibição, client-side, sobre a lista já carregada (o
- * servidor já manda tudo, filtrar aqui evita reload de rota/searchParams
- * num layout, que não recebe searchParams no App Router).
+ * Lista de conversas com pesquisa no estilo WhatsApp: o termo busca em nome e
+ * telefone (seção "Conversas", filtrada aqui mesmo) e no texto do que foi
+ * conversado (seção "Mensagens", busca no servidor).
  */
 export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
   const [filtro, setFiltro] = useState<Filtro>("tudo");
   const [busca, setBusca] = useState("");
-  const [menuFiltroAberto, setMenuFiltroAberto] = useState(false);
+  const [mensagens, setMensagens] = useState<MensagemEncontrada[]>([]);
+  const [buscando, setBuscando] = useState(false);
+
+  const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ultimaBusca = useRef("");
 
   const termoBusca = busca.trim().toLowerCase();
   const digitosBusca = termoBusca.replace(/\D/g, "");
+  const buscaNasMensagens = termoBusca.length >= 3;
+
+  // busca no texto das mensagens, com espera curta enquanto a pessoa digita
+  function mudarBusca(valor: string) {
+    setBusca(valor);
+    const termo = valor.trim().toLowerCase();
+    if (espera.current) clearTimeout(espera.current);
+    ultimaBusca.current = termo;
+    if (termo.length < 3) {
+      setMensagens([]);
+      setBuscando(false);
+      return;
+    }
+    setBuscando(true);
+    espera.current = setTimeout(async () => {
+      let r: MensagemEncontrada[] = [];
+      try {
+        r = await buscarMensagens(termo);
+      } catch {}
+      // descarta resposta de uma busca que já foi substituída
+      if (ultimaBusca.current !== termo) return;
+      setMensagens(r);
+      setBuscando(false);
+    }, 350);
+  }
+
+  useEffect(() => () => {
+    if (espera.current) clearTimeout(espera.current);
+  }, []);
+
   const itensBuscados = termoBusca
     ? itens.filter(
         (i) =>
@@ -47,37 +109,44 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
       )
     : itens;
 
-  const qtdNaoLidas = itensBuscados.filter((i) => i.naoLida).length;
-  const qtdConfirmacao = itensBuscados.filter((i) => i.confirmacaoGerenteTipo).length;
-  const qtdJantar = itensBuscados.filter((i) => i.interesseJantarHarmonizado).length;
+  const qtdNaoLidas = itens.filter((i) => i.naoLida).length;
+  const qtdConfirmacao = itens.filter((i) => i.confirmacaoGerenteTipo).length;
+  const qtdJantar = itens.filter((i) => i.interesseJantarHarmonizado).length;
+  const qtdHumano = itens.filter((i) => i.status === "humano").length;
   // o que precisa de resposta: interessado no Jantar que ainda não confirmou
-  const qtdJantarAguardando = itensBuscados.filter((i) => i.interesseJantarHarmonizado && !i.jantarHarmonizadoConfirmado).length;
+  const qtdJantarAguardando = itens.filter((i) => i.interesseJantarHarmonizado && !i.jantarHarmonizadoConfirmado).length;
 
   const contagens: Record<Filtro, number | undefined> = {
     tudo: undefined,
     "nao-lidas": qtdNaoLidas,
     confirmacao: qtdConfirmacao,
     "jantar-harmonizado": qtdJantar,
+    humano: qtdHumano,
     "jantar-aguardando": qtdJantarAguardando,
   };
   const temPendencia = qtdConfirmacao > 0 || qtdJantarAguardando > 0;
-  // rótulo/estado do botão-dropdown: mostra o filtro do dropdown ativo
-  // (Confirmação/Jantar); se o ativo for "Não lidas" (chip fora), o botão
-  // volta pra "Tudo" e não fica destacado.
-  const dropdownItemAtivo = FILTROS_DROPDOWN.find((f) => f.id === filtro);
-  const botaoLabel = dropdownItemAtivo ? dropdownItemAtivo.label : "Tudo";
-  const botaoDestacado = filtro === "confirmacao" || filtro === "jantar-harmonizado";
 
-  const itensFiltrados =
+  const passaFiltro = (i: ItemConversa) =>
     filtro === "nao-lidas"
-      ? itensBuscados.filter((i) => i.naoLida)
+      ? i.naoLida
       : filtro === "confirmacao"
-        ? itensBuscados.filter((i) => i.confirmacaoGerenteTipo)
+        ? !!i.confirmacaoGerenteTipo
         : filtro === "jantar-harmonizado"
-          ? itensBuscados.filter((i) => i.interesseJantarHarmonizado)
-          : filtro === "jantar-aguardando"
-            ? itensBuscados.filter((i) => i.interesseJantarHarmonizado && !i.jantarHarmonizadoConfirmado)
-            : itensBuscados;
+          ? !!i.interesseJantarHarmonizado
+          : filtro === "humano"
+            ? i.status === "humano"
+            : filtro === "jantar-aguardando"
+              ? !!i.interesseJantarHarmonizado && !i.jantarHarmonizadoConfirmado
+              : true;
+
+  const itensFiltrados = itensBuscados.filter(passaFiltro);
+
+  // nas mensagens encontradas, mostra o nome que a lista já conhece
+  const porTelefone = new Map(itens.map((i) => [i.phone.replace(/\D/g, ""), i]));
+  const mensagensFiltradas = mensagens.filter((m) => {
+    const item = porTelefone.get(m.phone.replace(/\D/g, ""));
+    return filtro === "tudo" || (item ? passaFiltro(item) : false);
+  });
 
   return (
     <>
@@ -85,97 +154,42 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
         <Search size={14} className="shrink-0 text-[var(--color-text-muted)]" />
         <input
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por nome ou telefone"
+          onChange={(e) => mudarBusca(e.target.value)}
+          placeholder="Pesquisar nome, telefone ou mensagem"
           className="h-full w-full bg-transparent text-[11.5px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
         />
-      </div>
-
-      <div className="relative flex shrink-0 items-center gap-1.5 px-[18px] pb-[12px]">
-        <button
-          type="button"
-          onClick={() => setMenuFiltroAberto((o) => !o)}
-          className={`flex items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
-            botaoDestacado
-              ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
-              : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-          }`}
-        >
-          {botaoLabel}
-          {botaoDestacado && !!contagens[filtro] && (
-            <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
-              {contagens[filtro]}
-            </span>
-          )}
-          <ChevronDown size={14} className={`transition-transform ${menuFiltroAberto ? "rotate-180" : ""}`} />
-          {/* bolinha de aviso: tem pendência escondida dentro do menu */}
-          {temPendencia && !botaoDestacado && (
-            <span aria-label="Há pendências" className="-ml-0.5 h-[7px] w-[7px] rounded-full bg-[#fbbf24] shadow-[0_0_6px_#fbbf24]" />
-          )}
-        </button>
-
-        {/* "Não lidas" fora do dropdown: chip fixo com contador, pra mensagem
-            não lida não passar despercebida. */}
-        <button
-          type="button"
-          onClick={() => setFiltro("nao-lidas")}
-          className={`flex items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
-            filtro === "nao-lidas"
-              ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
-              : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-          }`}
-        >
-          Não lidas
-          {qtdNaoLidas > 0 && (
-            <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
-              {qtdNaoLidas}
-            </span>
-          )}
-        </button>
-
-        {menuFiltroAberto && (
-          <>
-            <button
-              type="button"
-              aria-hidden
-              tabIndex={-1}
-              onClick={() => setMenuFiltroAberto(false)}
-              className="fixed inset-0 z-10 cursor-default"
-            />
-            <div className="absolute left-[18px] top-full z-20 mt-1.5 w-[240px] overflow-hidden rounded-xl border border-[#363050] bg-[#1a1729] p-1 shadow-[var(--shadow-card,0_10px_30px_-10px_rgba(0,0,0,0.6))]">
-              {FILTROS_DROPDOWN.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => {
-                    setFiltro(f.id);
-                    setMenuFiltroAberto(false);
-                  }}
-                  className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[12px] transition-colors ${
-                    filtro === f.id
-                      ? "bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
-                      : "text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-primary)]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Check size={13} className={filtro === f.id ? "opacity-100" : "opacity-0"} />
-                    {f.label}
-                  </span>
-                  {!!contagens[f.id] && (
-                    <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
-                      {contagens[f.id]}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </>
+        {busca && (
+          <button type="button" aria-label="Limpar pesquisa" onClick={() => mudarBusca("")} className="shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">
+            <X size={14} />
+          </button>
         )}
       </div>
 
+      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto px-[18px] pb-[12px] [scrollbar-width:none]">
+        {FILTROS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setFiltro(f.id)}
+            className={`flex shrink-0 items-center gap-1.5 rounded-[999px] border px-[12px] py-[6px] text-[12px] font-medium whitespace-nowrap transition-colors ${
+              filtro === f.id
+                ? "border-[rgba(168,85,247,0.4)] bg-[rgba(168,85,247,0.16)] text-[var(--color-text-primary)]"
+                : "border-[var(--color-border-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            }`}
+          >
+            {f.label}
+            {!!contagens[f.id] && (
+              <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#4ade80] px-1 text-[10px] font-bold text-[#05130a]">
+                {contagens[f.id]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Faixa de atenção: o que espera resposta do gerente fica sempre à
-          vista, sem precisar abrir o menu de filtros. Clique = filtra. */}
-      {temPendencia && filtro === "tudo" && (
+          vista. Clique = filtra. */}
+      {temPendencia && filtro === "tudo" && !termoBusca && (
         <div className="flex shrink-0 flex-col gap-1.5 px-[18px] pb-[12px]">
           {qtdConfirmacao > 0 && (
             <button
@@ -215,9 +229,13 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
         </div>
       )}
 
+      {termoBusca && (
+        <p className="px-[18px] pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-[#4ade80]">Conversas</p>
+      )}
+
       {itensFiltrados.length === 0 ? (
-        <p className="px-[18px] py-6 text-[13px] text-[var(--color-text-muted)]">
-          {filtro === "tudo" ? "Nenhuma conversa registrada ainda." : "Nada por aqui."}
+        <p className="px-[18px] py-4 text-[13px] text-[var(--color-text-muted)]">
+          {termoBusca ? "Nenhuma conversa com esse nome ou telefone." : filtro === "tudo" ? "Nenhuma conversa registrada ainda." : "Nada por aqui."}
         </p>
       ) : (
         itensFiltrados.map((c) => (
@@ -237,7 +255,40 @@ export function ListaConversas({ itens }: { itens: ItemConversa[] }) {
           />
         ))
       )}
+
+      {buscaNasMensagens && (
+        <>
+          <p className="px-[18px] pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-[#4ade80]">Mensagens</p>
+          {buscando && mensagensFiltradas.length === 0 ? (
+            <p className="px-[18px] py-4 text-[13px] text-[var(--color-text-muted)]">Procurando nas conversas…</p>
+          ) : mensagensFiltradas.length === 0 ? (
+            <p className="px-[18px] py-4 text-[13px] text-[var(--color-text-muted)]">Nenhuma mensagem com esse termo.</p>
+          ) : (
+            mensagensFiltradas.map((m, idx) => {
+              const item = porTelefone.get(m.phone.replace(/\D/g, ""));
+              const nome = item?.nomeCliente || formatTelefoneBR(m.phone);
+              return (
+                <Link
+                  key={`${m.phone}-${m.criadaEm}-${idx}`}
+                  href={`/conversas/${item?.phone ?? m.phone}`}
+                  prefetch={false}
+                  className="flex w-full flex-col gap-1 rounded-[18px] px-[18px] py-2.5 hover:bg-white/[0.03]"
+                >
+                  <div className="flex w-full items-start">
+                    <p className="text-[13px] font-semibold text-[var(--color-text-primary)]">{nome}</p>
+                    <div className="h-px min-w-px flex-1" />
+                    <span className="font-display text-[11.5px] text-[var(--color-text-muted)]">{quandoMensagem(m.criadaEm)}</span>
+                  </div>
+                  <p className="line-clamp-2 text-[11.5px] text-[var(--color-text-muted)]">
+                    {m.deNos && <span className="text-[var(--color-text-secondary)]">Você: </span>}
+                    <Trecho texto={m.texto} termo={termoBusca} />
+                  </p>
+                </Link>
+              );
+            })
+          )}
+        </>
+      )}
     </>
   );
 }
-
